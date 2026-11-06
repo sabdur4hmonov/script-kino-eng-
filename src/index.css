@@ -1,1 +1,44 @@
-:root{font-family:'Segoe UI',Arial,sans-serif;color:#453b4e;background:#f8f6f2;font-synthesis:none;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased;--ink:#453b4e;--purple:#806293;--muted:#9b8fa5;--line:#e8e2e9;--pale:#eee6f5;--white:#fffefd;--viewport-height:100dvh}*{box-sizing:border-box}body{margin:0;min-width:320px}button,input,textarea,select{font:inherit}button:focus-visible,a:focus-visible,select:focus-visible{outline:3px solid #bc9dd4;outline-offset:3px}button{touch-action:manipulation}::selection{background:#e0c9f1;color:#4f3263}a{color:inherit}
+:root {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: #453b4e;
+  background: #f8f6f2;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --ink: #453b4e;
+  --purple: #806293;
+  --muted: #9b8fa5;
+  --line: #e8e2e9;
+  --pale: #eee6f5;
+  --white: #fffefd;
+  --viewport-height: 100dvh;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  min-width: 320px;
+}
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+select:focus-visible {
+  outline: 3px solid #bc9dd4;
+  outline-offset: 3px;
+}
+button {
+  touch-action: manipulation;
+}
+::selection {
+  background: #e0c9f1;
+  color: #4f3263;
+}
+a {
+  color: inherit;
+}

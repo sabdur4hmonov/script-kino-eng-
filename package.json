@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "test:fixtures": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-fixtures.ps1",
+    "deploy": "wrangler pages deploy dist --project-name kinotingla"
   },
   "dependencies": {
     "mediabunny": "^1.65.2",
@@ -22,8 +26,13 @@
     "@vitejs/plugin-react": "^6.1.2",
     "fake-indexeddb": "^6.2.7",
     "oxlint": "^1.90.0",
+    "prettier": "^3.9.10",
     "typescript": "~7.0.2",
     "vite": "^8.3.6",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.0",
+    "wrangler": "^4.158.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }
