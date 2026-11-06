@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.env
+.env.*
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+test-media/
+test-results/
+playwright-report/
+*.local
+*.tsbuildinfo
+.DS_Store
