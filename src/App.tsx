@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent } from 'react'
 import { uz as t } from './i18n/uz'
+import { HelpDialog } from './HelpDialog'
 import type { Device, MediaScan, Session } from './types'
 import { parseSubtitles, timeLabel, cleanText } from './lib/subtitles'
 import { checkAnswer } from './lib/checking'
@@ -89,6 +90,12 @@ const initialDevice = (): Device =>
   navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches ? 'phone' : 'desktop'
 
 export default function App() {
+  const [helpOpen, setHelpOpen] = useState(false)
+  const helpTrigger = useRef<HTMLButtonElement>(null)
+  function openHelp(trigger: HTMLButtonElement) {
+    helpTrigger.current = trigger
+    setHelpOpen(true)
+  }
   const [file, setFile] = useState<File>()
   const [url, setUrl] = useState('')
   const [session, setSession] = useState<Session>()
@@ -464,7 +471,7 @@ export default function App() {
   }
   useEffect(() => {
     const keydown = (event: globalThis.KeyboardEvent) => {
-      if (event.ctrlKey && event.code === 'Space') {
+      if (!helpOpen && event.ctrlKey && event.code === 'Space') {
         event.preventDefault()
         void replay()
       }
@@ -481,7 +488,7 @@ export default function App() {
       window.removeEventListener('blur', pauseClock)
       document.removeEventListener('visibilitychange', pauseClock)
     }
-  }, [replay, stopClip])
+  }, [helpOpen, replay, stopClip])
   function speak(word: string) {
     if (!('speechSynthesis' in window)) {
       setNotice(t.speechUnavailable)
@@ -550,10 +557,20 @@ export default function App() {
           </span>
           <span className="brand-subtitle">{t.tagline}</span>
         </a>
-        <span className="privacy-pill">
-          <Icon name="lock" size={14} />
-          {t.private}
-        </span>
+        <div className="header-actions">
+          <button
+            type="button"
+            className="button help-button"
+            aria-haspopup="dialog"
+            onClick={(event) => openHelp(event.currentTarget)}
+          >
+            {t.help}
+          </button>
+          <span className="privacy-pill">
+            <Icon name="lock" size={14} />
+            {t.private}
+          </span>
+        </div>
       </header>
       <main>
         <section className="intro">
@@ -941,6 +958,14 @@ export default function App() {
                 <span className="section-number">02</span>
               </div>
               <p className="panel-copy">{t.subtitlesHint}</p>
+              <button
+                type="button"
+                className="help-link subtitle-help"
+                aria-haspopup="dialog"
+                onClick={(event) => openHelp(event.currentTarget)}
+              >
+                {t.subtitleHelp}
+              </button>
               <input
                 ref={subtitleInput}
                 hidden
@@ -1205,6 +1230,13 @@ export default function App() {
         <span>{t.footer}</span>
         <span>{t.footerNote}</span>
       </footer>
+      <HelpDialog
+        open={helpOpen}
+        onClose={() => {
+          setHelpOpen(false)
+          helpTrigger.current?.focus()
+        }}
+      />
     </div>
   )
 }

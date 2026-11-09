@@ -124,4 +124,26 @@ export const uz = {
   shiftEarlier: 'Oldinroq',
   shiftLater: 'Keyinroq',
   importLimit: 'Subtitr fayli juda katta. 20 MB dan kichik matnli subtitr tanlang.',
+  help: 'Yordam',
+  subtitleHelp: 'Subtitr qayerdan olaman?',
+  helpEmbedded: '1. Video ichidagi subtitrlarni tekshiring',
+  helpEmbeddedBody:
+    'Videoni tanlang. «Video ichidagi subtitr» ro‘yxatidan inglizcha yo‘lakni tanlab, «Subtitrlarni olish» tugmasini bosing.',
+  helpDownload: '2. Tayyor SRT faylini toping',
+  helpDownloadBody:
+    'Bepul subtitr saytlaridan izlash uchun qidiruvga «<kino nomi> english srt» deb yozing. Film versiyangizga mos .srt faylini yuklab oling va «SRT / VTT qo‘shish» orqali oching.',
+  helpSync: 'Subtitr oldin yoki kech chiqsa, vaqtni moslash tugmalaridan foydalaning.',
+  helpMake: '3. Windows’da bepul subtitr yarating',
+  helpSubtitleEdit: 'Subtitle Edit',
+  helpSubtitleEditSteps: [
+    'Videoni Subtitle Edit’da oching.',
+    'Video → Audio to text (Whisper) menyusiga o‘ting. Ingliz tilini va mahalliy Whisper modelini tanlab, transkripsiyani boshlang.',
+    'Natijani tekshiring, SubRip (.srt) shaklida saqlang va mashqqa qo‘shing.',
+  ],
+  helpBuzz: 'Buzz',
+  helpBuzzSteps: [
+    'Buzz’da File → Import Media File orqali videoni oching.',
+    'Transcribe vazifasini, English tilini va mahalliy Whisper modelini tanlang.',
+    'Export As bo‘limida SRT ni belgilang va Run tugmasini bosing. Tayyor faylni mashqqa qo‘shing.',
+  ],
 } as const

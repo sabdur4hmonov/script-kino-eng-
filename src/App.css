@@ -1350,3 +1350,67 @@ footer {
     transition: none !important;
   }
 }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.help-button {
+  background: white;
+  border: 1px solid var(--line);
+  color: var(--purple);
+}
+.help-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--purple);
+  text-decoration: underline;
+  font: inherit;
+  cursor: pointer;
+}
+.subtitle-help {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.help-dialog {
+  width: min(620px, calc(100% - 28px));
+  max-height: calc(100dvh - 32px);
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  color: var(--ink);
+  overflow: auto;
+}
+.help-dialog::backdrop {
+  background: #221a2c80;
+}
+.help-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.help-heading h2 {
+  margin: 0;
+}
+.help-dialog section {
+  margin-top: 18px;
+  line-height: 1.55;
+}
+.help-dialog h3,
+.help-dialog h4,
+.help-dialog p,
+.help-dialog ol {
+  margin: 0 0 6px;
+}
+.help-dialog ol {
+  padding-inline-start: 24px;
+}
+@media (max-width: 380px) {
+  .header-actions .privacy-pill {
+    display: none;
+  }
+}
