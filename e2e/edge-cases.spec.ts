@@ -30,6 +30,7 @@ test('unsupported audio has an Uzbek warning; revealed answers are unscored and 
   await page.getByRole('button', { name: 'Subtitrlarni olish', exact: true }).click()
   await page.getByRole('button', { name: 'Javobni ko‘rsatish', exact: true }).click()
   await page.locator('.answer-words button').first().click()
+  await page.getByRole('button', { name: 'Talaffuz', exact: true }).click()
   expect(
     await page.evaluate(
       () => (window as unknown as { spoken: { text: string; lang: string } }).spoken,

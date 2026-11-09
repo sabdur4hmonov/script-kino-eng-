@@ -68,7 +68,7 @@ export const uz = {
   correct: 'To‘g‘ri',
   wrong: 'Xato',
   missing: 'Tushib qolgan',
-  speakHint: 'Talaffuzini eshitish uchun javobdagi so‘zni bosing.',
+  speakHint: 'Talaffuz yoki tarjima uchun so‘zni bosing.',
   speechUnavailable: 'Bu brauzerda talaffuz funksiyasi mavjud emas.',
   edit: 'Matnni tahrirlash',
   saveEdit: 'Saqlash',
@@ -146,4 +146,7 @@ export const uz = {
     'Transcribe vazifasini, English tilini va mahalliy Whisper modelini tanlang.',
     'Export As bo‘limida SRT ni belgilang va Run tugmasini bosing. Tayyor faylni mashqqa qo‘shing.',
   ],
+  pronunciation: 'Talaffuz',
+  translation: 'Tarjima',
+  wordActions: 'So‘z amallari',
 } as const

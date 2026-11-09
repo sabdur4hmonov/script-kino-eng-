@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent } from 'react'
 import { uz as t } from './i18n/uz'
 import { HelpDialog } from './HelpDialog'
+import { WordActions } from './WordActions'
 import type { Device, MediaScan, Session } from './types'
 import { parseSubtitles, timeLabel, cleanText } from './lib/subtitles'
 import { checkAnswer } from './lib/checking'
@@ -886,9 +887,7 @@ export default function App() {
                       </div>
                       <p className="answer-words" lang="en">
                         {cueText.split(/\s+/).map((word, i) => (
-                          <button onClick={() => speak(word)} key={i}>
-                            {word}
-                          </button>
+                          <WordActions key={i} word={word} speak={speak} />
                         ))}
                       </p>
                       <small>{t.speakHint}</small>
@@ -1154,10 +1153,7 @@ export default function App() {
               {mistakes.length ? (
                 <div className="mistake-words" lang="en">
                   {mistakes.map(([word, count]) => (
-                    <button onClick={() => speak(word)} key={word}>
-                      {word}
-                      <small>×{count}</small>
-                    </button>
+                    <WordActions key={word} word={word} count={count} speak={speak} />
                   ))}
                 </div>
               ) : (

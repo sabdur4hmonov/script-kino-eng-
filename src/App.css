@@ -755,7 +755,7 @@ progress::-moz-progress-bar {
   gap: 5px;
   margin-top: 12px;
 }
-.mistake-words button {
+.mistake-words .word-actions > button {
   border: 1px solid #e5dce9;
   background: #f2ebf5;
   border-radius: 5px;
@@ -963,7 +963,7 @@ footer {
   font-size: 15px;
   margin: 13px 0 8px;
 }
-.answer-words button {
+.answer-words .word-actions > button {
   border: 0;
   background: none;
   color: #53435f;
@@ -973,7 +973,7 @@ footer {
   text-align: left;
   line-height: 1.4;
 }
-.answer-words button:hover {
+.answer-words .word-actions > button:hover {
   color: var(--purple);
   background: #eee4f7;
 }
@@ -1413,4 +1413,31 @@ footer {
   .header-actions .privacy-pill {
     display: none;
   }
+}
+
+.word-popover {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: white;
+  color: var(--ink);
+  box-shadow: 0 4px 18px #221a2c26;
+  font-size: 13px;
+}
+.word-popover:popover-open {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+.word-popover button,
+.word-popover a {
+  padding: 5px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: #f1edf6;
+  color: var(--purple);
+  font: inherit;
 }
