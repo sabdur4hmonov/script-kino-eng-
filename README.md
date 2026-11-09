@@ -25,10 +25,12 @@ The production app is only `dist/`. It does not need a running Node server.
 
 ### Git integration (recommended)
 
-1. In Cloudflare **Workers & Pages**, create a **Pages** project and connect GitHub repository `sabdur4hmonov/script-kino-eng-`.
-2. Select production branch `main`, framework **React (Vite)**, root directory `/`.
-3. Set build command **`npm run build`**, output directory **`dist`**, and environment variable **`NODE_VERSION=24`**.
-4. Deploy. Subsequent pushes to `main` trigger another static build.
+1. Sign in to the Cloudflare dashboard on the Free plan and open **Workers & Pages**.
+2. Select **Create** → **Pages** → **Connect to Git**. Choose GitHub and authorize access to the repository if prompted.
+3. Select `sabdur4hmonov/script-kino-eng-` and continue to setup. Choose a project name and set the production branch to `main`.
+4. Set the build command to `npm run build` and the build output directory to `dist`. Leave the root directory at the repository root.
+5. Under **Environment variables**, add `NODE_VERSION` with value `24`.
+6. Select **Save and Deploy**. Open the generated `https://<project-name>.pages.dev` address. That default subdomain works on the Free plan. Subsequent pushes to `main` trigger a new build.
 
 Cloudflare's official [build configuration](https://developers.cloudflare.com/pages/configuration/build-configuration/) lists `npm run build` and `dist` for React/Vite. No API keys or backend bindings are required by the app.
 
@@ -51,7 +53,7 @@ If that project name is taken, change `name` in `wrangler.toml` and `--project-n
 - **Ctrl + Space** replays the current cue with 0.2 seconds of padding. **Enter** checks, then advances. **Shift + Enter** allows a line break. Playback speed can be 0.75× or 1×.
 - Answers stay hidden during a replay. Checking shows a word-level LCS comparison: green matches, red extra/wrong typed words, grey missing expected words. A substitution displays both the wrong word and the missing word.
 - Checking ignores case and punctuation, expands common contractions, and accepts integer numerals as English number words (for example, `20` and `twenty`). British `one hundred and twenty` is accepted too. Ambiguous contractions use the common interpretation (`he's` → `he is`, `'d` → `would`).
-- Click an answer or mistaken word to pronounce it with the browser's `speechSynthesis` using `en-US`. Available voices depend on your browser/OS.
+- Click an answer or mistaken word to open its actions. **Talaffuz** uses the browser’s `speechSynthesis` with `en-US`. **Tarjima** opens Google Translate in a new tab.
 - Edit the current cue, or open the cue list to jump to and edit any cue. Importing a replacement subtitle source starts a new set of attempts for this video; the current sync offset is retained.
 - WPM is `(correct typed characters / 5) / active typing minutes`. Matching normalized words are credited with their original typed character lengths, so `20` does not earn the length of `twenty`. Only input activity contributes time; idle gaps of 2+ seconds, playback, checking, and unfocused time are excluded. Pasted answers count toward accuracy but not WPM. Accuracy is the number of matching normalized words divided by the larger word count.
 - Android IME events (`229`, `Unidentified`, composition) identify phone input. Physical key events identify physical keyboards. Results have separate phone/physical-keyboard tabs. Touch devices default to phone until physical key events are observed. Detection is a browser heuristic, not hardware attestation.
