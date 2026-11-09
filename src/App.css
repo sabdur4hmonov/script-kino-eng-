@@ -1441,3 +1441,12 @@ footer {
   color: var(--purple);
   font: inherit;
 }
+
+.help-dialog pre {
+  margin: 8px 0;
+  padding: 10px;
+  border-radius: 8px;
+  background: #f1edf6;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent } from 'react'
 import { uz as t } from './i18n/uz'
 import { HelpDialog } from './HelpDialog'
+import type { HelpTopic } from './HelpDialog'
 import { WordActions } from './WordActions'
 import type { Device, MediaScan, Session } from './types'
 import { parseSubtitles, timeLabel, cleanText } from './lib/subtitles'
@@ -91,11 +92,11 @@ const initialDevice = (): Device =>
   navigator.maxTouchPoints > 0 && matchMedia('(pointer: coarse)').matches ? 'phone' : 'desktop'
 
 export default function App() {
-  const [helpOpen, setHelpOpen] = useState(false)
+  const [helpTopic, setHelpTopic] = useState<HelpTopic | null>(null)
   const helpTrigger = useRef<HTMLButtonElement>(null)
-  function openHelp(trigger: HTMLButtonElement) {
+  function openHelp(trigger: HTMLButtonElement, topic: HelpTopic = 'subtitles') {
     helpTrigger.current = trigger
-    setHelpOpen(true)
+    setHelpTopic(topic)
   }
   const [file, setFile] = useState<File>()
   const [url, setUrl] = useState('')
@@ -472,7 +473,7 @@ export default function App() {
   }
   useEffect(() => {
     const keydown = (event: globalThis.KeyboardEvent) => {
-      if (!helpOpen && event.ctrlKey && event.code === 'Space') {
+      if (!helpTopic && event.ctrlKey && event.code === 'Space') {
         event.preventDefault()
         void replay()
       }
@@ -489,7 +490,7 @@ export default function App() {
       window.removeEventListener('blur', pauseClock)
       document.removeEventListener('visibilitychange', pauseClock)
     }
-  }, [helpOpen, replay, stopClip])
+  }, [helpTopic, replay, stopClip])
   function speak(word: string) {
     if (!('speechSynthesis' in window)) {
       setNotice(t.speechUnavailable)
@@ -642,7 +643,21 @@ export default function App() {
           <div className="notice warning" role="alert">
             <Icon name="headphones" />
             {scan.audioCodec ? `${scan.audioCodec.toUpperCase()}: ` : ''}
-            {scan.audioCodec ? t.audioWarning : t.noAudio}
+            {scan.audioCodec ? (
+              <div>
+                {t.audioWarning}{' '}
+                <button
+                  type="button"
+                  className="help-link"
+                  aria-haspopup="dialog"
+                  onClick={(event) => openHelp(event.currentTarget, 'audio')}
+                >
+                  {t.audioHelp}
+                </button>
+              </div>
+            ) : (
+              t.noAudio
+            )}
           </div>
         )}
         <div className="workspace-grid">
@@ -1227,9 +1242,9 @@ export default function App() {
         <span>{t.footerNote}</span>
       </footer>
       <HelpDialog
-        open={helpOpen}
+        topic={helpTopic}
         onClose={() => {
-          setHelpOpen(false)
+          setHelpTopic(null)
           helpTrigger.current?.focus()
         }}
       />

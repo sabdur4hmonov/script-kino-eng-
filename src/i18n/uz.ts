@@ -149,4 +149,16 @@ export const uz = {
   pronunciation: 'Talaffuz',
   translation: 'Tarjima',
   wordActions: 'So‘z amallari',
+  audioHelp: 'Qanday tuzataman?',
+  audioHelpTitle: 'AC3 yoki DTS ovozini AAC’ga o‘tkazish',
+  audioHelpHandbrake: 'HandBrake orqali',
+  audioHelpHandbrakeSteps: [
+    'Videoni bepul HandBrake dasturida oching va chiqish formati sifatida MKV’ni tanlang.',
+    'Audio bo‘limida kerakli yo‘lakning kodekini AAC qilib belgilang.',
+    'Subtitles bo‘limida saqlamoqchi bo‘lgan ichki yo‘laklarni qo‘shing va Burn In belgisini olib tashlang. Start Encode tugmasini bosing.',
+  ],
+  audioHelpFfmpeg: 'ffmpeg orqali',
+  audioHelpCommand: 'ffmpeg -i input.mkv -map 0 -c:v copy -c:s copy -c:a aac -b:a 192k output.mkv',
+  audioHelpPreserve:
+    'Bu buyruq faqat audio yo‘laklarni AAC’ga o‘tkazadi. Video va fayl ichidagi subtitrlar o‘z holicha saqlanadi. Tayyor output.mkv faylini mashqqa yuklang.',
 } as const

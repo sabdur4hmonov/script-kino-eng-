@@ -27,6 +27,16 @@ test('unsupported audio has an Uzbek warning; revealed answers are unscored and 
   await expect(page.locator('.notice.warning')).toContainText(
     'audio kodekini brauzeringiz qo‘llamasligi mumkin',
   )
+  const audioHelp = page.getByRole('button', { name: 'Qanday tuzataman?', exact: true })
+  await audioHelp.click()
+  const guide = page.getByRole('dialog', { name: 'AC3 yoki DTS ovozini AAC’ga o‘tkazish' })
+  await expect(guide).toContainText('HandBrake')
+  await expect(guide.locator('code')).toHaveText(
+    'ffmpeg -i input.mkv -map 0 -c:v copy -c:s copy -c:a aac -b:a 192k output.mkv',
+  )
+  await expect(guide).toContainText('subtitrlar o‘z holicha saqlanadi')
+  await guide.getByRole('button', { name: 'Yopish' }).click()
+  await expect(audioHelp).toBeFocused()
   await page.getByRole('button', { name: 'Subtitrlarni olish', exact: true }).click()
   await page.getByRole('button', { name: 'Javobni ko‘rsatish', exact: true }).click()
   await page.locator('.answer-words button').first().click()
