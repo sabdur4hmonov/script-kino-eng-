@@ -4,6 +4,7 @@ import { uz as t } from './i18n/uz'
 import { HelpDialog } from './HelpDialog'
 import type { HelpTopic } from './HelpDialog'
 import { WordActions } from './WordActions'
+import { FEEDBACK_URL } from './config'
 import type { Device, MediaScan, Session } from './types'
 import { parseSubtitles, timeLabel, cleanText } from './lib/subtitles'
 import { checkAnswer } from './lib/checking'
@@ -799,6 +800,14 @@ export default function App() {
                     {t.restart}
                     <Icon name="replay" size={17} />
                   </button>
+                  <a
+                    className="help-link feedback-link"
+                    href={FEEDBACK_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {t.feedback}
+                  </a>
                 </div>
               ) : (
                 <>
@@ -1240,6 +1249,14 @@ export default function App() {
       <footer>
         <span>{t.footer}</span>
         <span>{t.footerNote}</span>
+        <a
+          className="help-link feedback-link"
+          href={FEEDBACK_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t.feedback}
+        </a>
       </footer>
       <HelpDialog
         topic={helpTopic}

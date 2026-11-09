@@ -1450,3 +1450,9 @@ footer {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
+.finished .feedback-link {
+  display: block;
+  width: fit-content;
+  margin: 14px auto 0;
+}

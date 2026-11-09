@@ -161,4 +161,5 @@ export const uz = {
   audioHelpCommand: 'ffmpeg -i input.mkv -map 0 -c:v copy -c:s copy -c:a aac -b:a 192k output.mkv',
   audioHelpPreserve:
     'Bu buyruq faqat audio yo‘laklarni AAC’ga o‘tkazadi. Video va fayl ichidagi subtitrlar o‘z holicha saqlanadi. Tayyor output.mkv faylini mashqqa yuklang.',
+  feedback: 'Fikr bildirish',
 } as const

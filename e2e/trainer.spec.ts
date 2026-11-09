@@ -54,14 +54,12 @@ test('local import, hotkeys, clipping, scoring, editing and resume', async ({ pa
       await page.evaluate(() => (window as unknown as { mediaEvents: unknown[] }).mediaEvents),
     )
     console.log(
-      await page
-        .locator('video')
-        .evaluate((video) => ({
-          time: video.currentTime,
-          paused: video.paused,
-          state: video.readyState,
-          error: video.error?.message,
-        })),
+      await page.locator('video').evaluate((video) => ({
+        time: video.currentTime,
+        paused: video.paused,
+        state: video.readyState,
+        error: video.error?.message,
+      })),
     )
     throw error
   }
@@ -99,6 +97,12 @@ test('local import, hotkeys, clipping, scoring, editing and resume', async ({ pa
   await expect(
     page.getByRole('heading', { name: 'Ajoyib, mashq tugadi!', exact: true }),
   ).toBeVisible()
+  for (const area of ['footer', '.finished']) {
+    const feedback = page.locator(area).getByRole('link', { name: 'Fikr bildirish' })
+    await expect(feedback).toHaveAttribute('href', 'https://t.me/REPLACE_ME')
+    await expect(feedback).toHaveAttribute('target', '_blank')
+    await expect(feedback).toHaveAttribute('rel', 'noopener noreferrer')
+  }
   expect(externalRequests).toEqual([])
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
