@@ -162,4 +162,21 @@ export const uz = {
   audioHelpPreserve:
     'Bu buyruq faqat audio yo‘laklarni AAC’ga o‘tkazadi. Video va fayl ichidagi subtitrlar o‘z holicha saqlanadi. Tayyor output.mkv faylini mashqqa yuklang.',
   feedback: 'Fikr bildirish',
+  themeToggle: 'Qorong‘i mavzuni almashtirish',
+  heroChips: ['MP4 / MKV', 'SRT / VTT', 'Oflayn mashq'],
+  screenLabel: '01 / KINOZAL',
+  exampleResult: 'Javob namunasi',
+  exampleWords: ['see', 'us', 'you'],
+  howKicker: 'UCH QADAM',
+  howTitle: 'Qanday ishlaydi?',
+  howSteps: [
+    ['Video tanlang', 'MP4 yoki MKV faylini qurilmangizdan oching.'],
+    ['Subtitr qo‘shing', 'Ichki inglizcha yo‘lakni yoki SRT / VTT faylini tanlang.'],
+    ['Tinglang va yozing', 'Eshitgan jumlangizni yozing va javobingizni tekshiring.'],
+  ],
+  keyCtrl: 'Ctrl',
+  keySpace: 'Space',
+  keyEnter: 'Enter',
+  hotkeyReplay: '— qayta tinglash',
+  hotkeyCheck: '— tekshirish / keyingi',
 } as const

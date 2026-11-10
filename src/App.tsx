@@ -4,6 +4,7 @@ import { uz as t } from './i18n/uz'
 import { HelpDialog } from './HelpDialog'
 import type { HelpTopic } from './HelpDialog'
 import { WordActions } from './WordActions'
+import { ThemeToggle } from './ThemeToggle'
 import { FEEDBACK_URL } from './config'
 import type { Device, MediaScan, Session } from './types'
 import { parseSubtitles, timeLabel, cleanText } from './lib/subtitles'
@@ -548,11 +549,11 @@ export default function App() {
   const answerVisible = revealed && !playing
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${file ? 'studio' : 'landing'}${cue ? ' has-cues' : ''}`}>
       <header className="site-header">
         <a className="brand" href="./" aria-label={`${t.brand}${t.brandAccent}`}>
           <span className="brand-mark">
-            <Icon name="headphones" size={23} />
+            <Icon name="film" size={23} />
           </span>
           <span>
             {t.brand}
@@ -560,6 +561,23 @@ export default function App() {
           </span>
           <span className="brand-subtitle">{t.tagline}</span>
         </a>
+        {file && (
+          <div className="file-chip">
+            <Icon name="film" size={14} />
+            <span title={file.name}>{file.name}</span>
+            <small>
+              {(file.size / (file.size >= 1e9 ? 1e9 : 1e6)).toFixed(1)}{' '}
+              {file.size >= 1e9 ? t.sizeGb : t.sizeMb}
+            </small>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => fileInput.current?.click()}
+            >
+              {t.changeVideo}
+            </button>
+          </div>
+        )}
         <div className="header-actions">
           <button
             type="button"
@@ -569,38 +587,16 @@ export default function App() {
           >
             {t.help}
           </button>
-          <span className="privacy-pill">
-            <Icon name="lock" size={14} />
-            {t.private}
-          </span>
+          {!file && (
+            <span className="privacy-pill">
+              <Icon name="lock" size={14} />
+              {t.private}
+            </span>
+          )}
+          <ThemeToggle />
         </div>
       </header>
       <main>
-        <section className="intro">
-          <div>
-            <p className="eyebrow">
-              <span /> {t.eyebrow}
-            </p>
-            <h1>
-              {t.title}
-              <br />
-              <em>{t.titleAccent}</em>
-            </h1>
-            <p className="intro-copy">{t.intro}</p>
-          </div>
-          <div className="intro-art" aria-hidden="true">
-            <div className="record">
-              <span />
-              <i />
-            </div>
-            <div className="sound-wave">
-              {Array.from({ length: 17 }, (_, i) => (
-                <i key={i} style={{ height: `${12 + Math.sin(i * 1.7) ** 2 * 45}px` }} />
-              ))}
-            </div>
-            <span className="art-star">✦</span>
-          </div>
-        </section>
         <nav className="steps" aria-label={t.progress}>
           {[t.stepVideo, t.stepSubtitles, t.stepPractice].map((label, i) => (
             <span
@@ -662,6 +658,33 @@ export default function App() {
           </div>
         )}
         <div className="workspace-grid">
+          {!file && (
+            <section className="intro">
+              <p className="eyebrow">
+                <span />
+                {t.eyebrow}
+              </p>
+              <h1>
+                {t.title}
+                <br />
+                <em>{t.titleAccent}</em>
+              </h1>
+              <p className="intro-copy">{t.intro}</p>
+              <button
+                className="button primary hero-action"
+                onClick={() => fileInput.current?.click()}
+              >
+                <Icon name="upload" size={18} />
+                {t.chooseVideo}
+                <Icon name="arrow" size={16} />
+              </button>
+              <div className="hero-chips">
+                {t.heroChips.map((chip) => (
+                  <span key={chip}>{chip}</span>
+                ))}
+              </div>
+            </section>
+          )}
           <div className="main-column">
             <section className="panel video-panel">
               <div className="panel-heading">
@@ -669,12 +692,6 @@ export default function App() {
                   <Icon name="film" />
                   {t.workspace}
                 </h2>
-                {file && (
-                  <button className="text-button" onClick={() => fileInput.current?.click()}>
-                    {t.changeVideo}
-                    <Icon name="upload" size={15} />
-                  </button>
-                )}
               </div>
               <input
                 ref={fileInput}
@@ -688,7 +705,7 @@ export default function App() {
                 }}
               />
               {url ? (
-                <div className="video-wrap">
+                <div className={`video-wrap${playing ? ' is-playing' : ''}`}>
                   <video
                     ref={video}
                     src={url}
@@ -712,6 +729,7 @@ export default function App() {
                     onTimeUpdate={scheduleClipEnd}
                     onEnded={stopClip}
                   />
+                  {playing && <span className="playing-badge">{t.clipping}</span>}
                 </div>
               ) : (
                 <div
@@ -727,10 +745,12 @@ export default function App() {
                     void pickVideo(event.dataTransfer.files[0])
                   }}
                 >
-                  <div className="empty-film">
-                    <Icon name="film" size={36} />
+                  <span className="screen-label" aria-hidden="true">
+                    {t.screenLabel}
+                  </span>
+                  <div className="empty-film" aria-hidden="true">
                     <span className="mini-play">
-                      <Icon name="play" size={15} />
+                      <Icon name="play" size={34} />
                     </span>
                   </div>
                   <h3>{t.dropVideo}</h3>
@@ -740,6 +760,19 @@ export default function App() {
                     {t.chooseVideo}
                   </button>
                   <small>{t.videoFormats}</small>
+                </div>
+              )}
+              {!file && (
+                <div className="example-card" aria-hidden="true">
+                  <div className="answer-heading">
+                    <span>{t.exampleResult}</span>
+                    <b>67{t.percent}</b>
+                  </div>
+                  <div className="diff" lang="en">
+                    <span className="diff-correct">{t.exampleWords[0]}</span>
+                    <span className="diff-wrong">{t.exampleWords[1]}</span>
+                    <span className="diff-missing">{t.exampleWords[2]}</span>
+                  </div>
                 </div>
               )}
               <div className="video-foot">
@@ -756,6 +789,11 @@ export default function App() {
               </div>
             </section>
             <section className="panel practice-panel">
+              {cue && (
+                <div className="deck-progress" aria-hidden="true">
+                  <span style={{ width: progress + '%' }} />
+                </div>
+              )}
               <div className="panel-heading">
                 <h2>
                   <Icon name="headphones" />
@@ -814,14 +852,25 @@ export default function App() {
                   <div className="clip-controls">
                     <button
                       className={`button replay ${playing ? 'is-playing' : ''}`}
+                      aria-label={playing ? t.clipping : t.replay}
                       onClick={() => void replay()}
                     >
-                      <Icon name="replay" size={18} />
-                      {playing ? t.clipping : t.replay}
+                      {playing ? (
+                        <span className="equalizer" aria-hidden="true">
+                          <i />
+                          <i />
+                          <i />
+                        </span>
+                      ) : (
+                        <Icon name="replay" size={22} />
+                      )}
                     </button>
-                    <span className="clip-time">
-                      {timeLabel(cue.start + session!.offset)} —{' '}
-                      {timeLabel(cue.end + session!.offset)}
+                    <span className="replay-info">
+                      <strong aria-hidden="true">{playing ? t.clipping : t.replay}</strong>
+                      <span className="clip-time">
+                        {timeLabel(cue.start + session!.offset)} —{' '}
+                        {timeLabel(cue.end + session!.offset)}
+                      </span>
                     </span>
                     <div className="speed" aria-label={t.speed}>
                       {[0.75, 1].map((value) => (
@@ -897,13 +946,28 @@ export default function App() {
                       {t.skip} ↗
                     </button>
                   </div>
-                  <p className="hotkeys">{t.hotkeys}</p>
+                  <p className="hotkeys">
+                    <span>
+                      <kbd>{t.keyCtrl}</kbd> + <kbd>{t.keySpace}</kbd> {t.hotkeyReplay}
+                    </span>
+                    <span>
+                      <kbd>{t.keyEnter}</kbd> {t.hotkeyCheck}
+                    </span>
+                  </p>
                   {answerVisible && (
                     <div className="answer-panel" aria-live="polite">
                       <div className="answer-heading">
                         <span>{t.answer}</span>
                         {result && (
-                          <b>
+                          <b
+                            data-score={
+                              result.accuracy >= 90
+                                ? 'good'
+                                : result.accuracy >= 60
+                                  ? 'fair'
+                                  : 'bad'
+                            }
+                          >
                             {result.accuracy}
                             {t.percent}
                           </b>
@@ -971,6 +1035,24 @@ export default function App() {
               )}
             </section>
           </div>
+          {!file && (
+            <section className="how-section" aria-labelledby="how-title">
+              <p className="section-kicker">
+                <span />
+                {t.howKicker}
+              </p>
+              <h2 id="how-title">{t.howTitle}</h2>
+              <div className="how-cards">
+                {t.howSteps.map(([title, text], index) => (
+                  <article key={title}>
+                    <span aria-hidden="true">0{index + 1}</span>
+                    <h3>{title}</h3>
+                    <p>{text}</p>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
           <aside className="side-column">
             <section className="panel subtitle-panel">
               <div className="panel-heading">
@@ -1135,10 +1217,23 @@ export default function App() {
               </div>
               <div className="stats-numbers">
                 <div>
-                  <strong>
-                    {accuracy}
-                    <small>{t.percent}</small>
-                  </strong>
+                  <div className="accuracy-ring">
+                    <svg viewBox="0 0 64 64" aria-hidden="true">
+                      <circle cx="32" cy="32" r="28" />
+                      <circle
+                        className="ring-value"
+                        cx="32"
+                        cy="32"
+                        r="28"
+                        pathLength="100"
+                        strokeDasharray={accuracy + ' 100'}
+                      />
+                    </svg>
+                    <strong>
+                      {accuracy}
+                      <small>{t.percent}</small>
+                    </strong>
+                  </div>
                   <span>{t.accuracy}</span>
                 </div>
                 <div>

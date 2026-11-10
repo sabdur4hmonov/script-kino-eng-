@@ -1,24 +1,81 @@
 :root {
-  font-family: 'Segoe UI', Arial, sans-serif;
-  color: #453b4e;
-  background: #f8f6f2;
+  color-scheme: light;
+  --bg: #f4f0e8;
+  --surface: #fffcf6;
+  --surface-2: #eee7db;
+  --text: #1c1813;
+  --muted: #7c7367;
+  --accent: #f0a12f;
+  --accent-text: #9a5600;
+  --good: #1e8c5a;
+  --bad: #d23f3f;
+  --line: #ddd4c6;
+  --screen: #141118;
+  --screen-text: #f4efe6;
+  --screen-muted: #b9aebc;
+  --screen-amber: #ffb547;
+  --accent-ink: #211407;
+  --shadow: #41301c13;
+  --backdrop: #0c0b0fb8;
+  --glow: color-mix(in srgb, var(--accent) 15%, transparent);
+  --accent-wash: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  --good-wash: color-mix(in srgb, var(--good) 12%, var(--surface));
+  --bad-wash: color-mix(in srgb, var(--bad) 11%, var(--surface));
+  --good-ink: color-mix(in srgb, var(--good) 78%, var(--text));
+  --bad-ink: color-mix(in srgb, var(--bad) 82%, var(--text));
+  --serif: 'Instrument Serif', Georgia, serif;
+  --mono: 'JetBrains Mono Variable', monospace;
+  --viewport-height: 100dvh;
+  font-family: 'Inter Variable', system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  --ink: #453b4e;
-  --purple: #806293;
-  --muted: #9b8fa5;
-  --line: #e8e2e9;
-  --pale: #eee6f5;
-  --white: #fffefd;
-  --viewport-height: 100dvh;
 }
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0c0b0f;
+  --surface: #15131a;
+  --surface-2: #1c1a22;
+  --text: #f4efe6;
+  --muted: #8f8899;
+  --accent: #ffb547;
+  --accent-text: #ffb547;
+  --good: #5fe0a3;
+  --bad: #ff7a7a;
+  --line: #302a36;
+  --shadow: #00000050;
+  --glow: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
 * {
   box-sizing: border-box;
 }
+html {
+  scroll-padding-top: 116px;
+}
 body {
+  position: relative;
+  isolation: isolate;
   margin: 0;
-  min-width: 320px;
+  min-width: 0;
+  min-height: 100vh;
+  background: radial-gradient(ellipse 75% 440px at 54% 0%, var(--glow), transparent);
+}
+body::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url('/grain.svg');
+  opacity: 0.09;
+  pointer-events: none;
+}
+#root {
+  position: relative;
+  isolation: isolate;
 }
 button,
 input,
@@ -26,19 +83,24 @@ textarea,
 select {
   font: inherit;
 }
-button:focus-visible,
-a:focus-visible,
-select:focus-visible {
-  outline: 3px solid #bc9dd4;
-  outline-offset: 3px;
-}
 button {
+  cursor: pointer;
   touch-action: manipulation;
 }
-::selection {
-  background: #e0c9f1;
-  color: #4f3263;
+button:disabled {
+  cursor: not-allowed;
 }
 a {
   color: inherit;
+}
+button:focus-visible,
+a:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 3px;
+}
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
 }
