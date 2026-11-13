@@ -68,3 +68,38 @@ export function readyAlternative(cue: Cue, ready: Cue[], normalize: (text: strin
   const text = matches.map((item) => item.text).join(' ')
   return normalize(text).join(' ') === normalize(cue.text).join(' ') ? undefined : text
 }
+
+export function markSpelling(diff: DiffWord[], distance: (a: string, b: string) => number) {
+  const graded: DiffWord[] = []
+  for (let i = 0; i < diff.length;) {
+    if (diff[i].kind !== 'wrong' && diff[i].kind !== 'missing') {
+      graded.push(diff[i++])
+      continue
+    }
+    let end = i + 1
+    while (end < diff.length && (diff[end].kind === 'missing' || diff[end].kind === 'wrong')) end++
+    const run = diff.slice(i, end)
+    const missing = run.filter((word) => word.kind === 'missing')
+    const typed = run.filter((word) => word.kind === 'wrong')
+    const matched = new Map<DiffWord, DiffWord>()
+    const removed = new Set<DiffWord>()
+    for (let j = 0; j < Math.min(missing.length, typed.length); j++) {
+      const a = missing[j].text,
+        b = typed[j].text
+      const limit = a.length >= 7 ? 2 : 1
+      if (
+        /^[a-z]{2,}$/.test(a) &&
+        /^[a-z]{2,}$/.test(b) &&
+        Math.abs(a.length - b.length) <= limit &&
+        distance(a, b) <= limit
+      ) {
+        matched.set(typed[j], missing[j])
+        removed.add(missing[j])
+      }
+    }
+    for (const word of run)
+      if (!removed.has(word)) graded.push(matched.has(word) ? { ...word, kind: 'spelling' } : word)
+    i = end
+  }
+  return graded
+}

@@ -217,4 +217,6 @@ export const uz = {
   useReadyLine: 'Tayyor jumlani ishlatish',
   useAiLine: 'Avtomatik jumlani ishlatish',
   useAuto: 'Avtomatik subtitrga o‘tish',
+  spelling: 'Imlo',
+  spellingMistakes: 'Imlo xatolari',
 } as const

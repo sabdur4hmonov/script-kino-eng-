@@ -509,12 +509,15 @@ export default function App() {
     setSession((current) => {
       if (!current) return current
       const mistakes = { ...current.mistakes }
+      const spelling = { ...current.spelling }
+      for (const word of checked.spelling) spelling[word] = (spelling[word] ?? 0) + 1
       checked.mistakes.forEach((word) => {
         mistakes[word] = (mistakes[word] ?? 0) + 1
       })
       return {
         ...current,
         mistakes,
+        spelling,
         work: {
           cueId: cue.id,
           answer,
@@ -535,6 +538,7 @@ export default function App() {
             device: measurement.device,
             at,
             mistakes: checked.mistakes,
+            spelling: checked.spelling,
           },
         ],
       }
@@ -1284,6 +1288,7 @@ export default function App() {
                             <span className="correct-dot">{t.correct}</span>
                             <span className="wrong-dot">{t.wrong}</span>
                             <span className="missing-dot">{t.missing}</span>
+                            {!!result.spelling.length && <span>{t.spelling}</span>}
                             {result.diff.some((word) => word.kind === 'disputed') && (
                               <span>{t.disputed}</span>
                             )}
@@ -1647,6 +1652,19 @@ export default function App() {
                 <p>{t.mistakesEmpty}</p>
               )}
             </section>
+            {!!Object.keys(session?.spelling ?? {}).length && (
+              <section className="mistakes-panel spelling-panel">
+                <h2>{t.spellingMistakes}</h2>
+                <div className="mistake-words" lang="en">
+                  {Object.entries(session!.spelling!)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 30)
+                    .map(([word, count]) => (
+                      <WordActions key={word} word={word} count={count} speak={speak} />
+                    ))}
+                </div>
+              </section>
+            )}
           </aside>
         </div>
         {session && (!!session.cues.length || !!(auto && ai.corpus)) && (

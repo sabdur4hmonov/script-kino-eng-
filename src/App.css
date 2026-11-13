@@ -1600,3 +1600,14 @@ footer {
 .answer-words .word-actions > button[data-doubtful] {
   border-bottom: 2px dotted var(--accent-text);
 }
+
+.diff .diff-spelling,
+.spelling-panel .word-actions > button {
+  color: var(--accent-text);
+  background: var(--accent-wash);
+}
+@media (max-width: 899px) {
+  .studio .spelling-panel {
+    order: 6;
+  }
+}

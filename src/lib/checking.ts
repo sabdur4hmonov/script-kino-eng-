@@ -1,10 +1,11 @@
-import { forgiveDoubtful } from './assessment'
+import { forgiveDoubtful, markSpelling } from './assessment'
 import type { WhisperChunk } from './whisper-types'
 
 export type DiffWord = {
   text: string
   kind: 'correct' | 'wrong' | 'missing' | 'disputed' | 'spelling'
   expected?: number
+  typed?: number
 }
 const small = [
   'zero',
@@ -65,10 +66,57 @@ const contractions: Record<string, string> = {
   "who's": 'who is',
   "here's": 'here is',
 }
+const fillers = new Set(['um', 'uh', 'er', 'hmm', 'mm'])
+const variants: Record<string, string> = {
+  colour: 'color',
+  colours: 'colors',
+  coloured: 'colored',
+  colouring: 'coloring',
+  centre: 'center',
+  centres: 'centers',
+  centred: 'centered',
+  theatre: 'theater',
+  favourite: 'favorite',
+  honour: 'honor',
+  labour: 'labor',
+  flavour: 'flavor',
+  neighbour: 'neighbor',
+  travelling: 'traveling',
+  travelled: 'traveled',
+  organise: 'organize',
+  organised: 'organized',
+  organising: 'organizing',
+  organisation: 'organization',
+  realise: 'realize',
+  realised: 'realized',
+  realising: 'realizing',
+  recognise: 'recognize',
+  apologise: 'apologize',
+  summarise: 'summarize',
+  analyse: 'analyze',
+  specialise: 'specialize',
+  ok: 'okay',
+}
+export function editDistance(a: string, b: string) {
+  let row = Array.from({ length: b.length + 1 }, (_, index) => index)
+  for (let i = 0; i < a.length; i++) {
+    const next = [i + 1]
+    for (let j = 0; j < b.length; j++)
+      next.push(Math.min(row[j + 1] + 1, next[j] + 1, row[j] + Number(a[i] !== b[j])))
+    row = next
+  }
+  return row[b.length]
+}
+
 export function normalize(text: string): string[] {
   let value = text
     .toLowerCase()
     .replace(/[’‘]/g, "'")
+    .replace(
+      /\b(gonna|wanna|gotta)\b/g,
+      (word) => ({ gonna: 'going to', wanna: 'want to', gotta: 'got to' })[word]!,
+    )
+    .replace(/(^|\s)'cause\b/g, '$1because')
     .replace(/(\d),(?=\d{3}(?:\D|$))/g, '$1')
   value = value.replace(/\b[\w']+\b/g, (word) => {
     let expanded =
@@ -86,7 +134,11 @@ export function normalize(text: string): string[] {
     .replace(/'/g, '')
     .replace(/[^\p{L}\p{N}\s]/gu, ' ')
     .replace(/\b(hundred|thousand|million|billion)\s+and\s+/g, '$1 ')
-  return value.split(/\s+/).filter(Boolean).slice(0, 400)
+  return value
+    .split(/\s+/)
+    .filter((word) => word && !fillers.has(word))
+    .map((word) => variants[word] ?? word)
+    .slice(0, 400)
 }
 
 export function checkAnswer(expected: string, typed: string, words?: WhisperChunk[]) {
@@ -112,25 +164,44 @@ export function checkAnswer(expected: string, typed: string, words?: WhisperChun
       const share = (chunk.length + (index > 0 ? 1 : 0)) / words.length
       words.forEach((word) => credits.push({ word, chars: share }))
     })
+  const names = new Set<number>()
+  let cursor = 0
+  let sentenceStart = true
+  for (const word of expected.trim().split(/\s+/)) {
+    const items = normalize(word)
+    const capitalized = /^["“'‘(]*[A-Z][a-z]+/.test(word)
+    if (!sentenceStart && capitalized && items.length === 1 && a[cursor] === items[0])
+      names.add(cursor)
+    if (items.length) sentenceStart = /[.!?][”"')]*$/.test(word)
+    cursor += items.length
+  }
+  const nameMatches = (i: number, j: number) =>
+    names.has(i) &&
+    /^[a-z]+$/.test(b[j]) &&
+    Math.abs(a[i].length - b[j].length) <= 2 &&
+    editDistance(a[i], b[j]) <= 2
+  const matches = (i: number, j: number) => a[i] === b[j] || nameMatches(i, j)
   const table = Array.from({ length: a.length + 1 }, () => new Uint16Array(b.length + 1))
   for (let i = a.length - 1; i >= 0; i--)
     for (let j = b.length - 1; j >= 0; j--)
-      table[i][j] =
-        a[i] === b[j] ? table[i + 1][j + 1] + 1 : Math.max(table[i + 1][j], table[i][j + 1])
+      table[i][j] = matches(i, j)
+        ? table[i + 1][j + 1] + 1
+        : Math.max(table[i + 1][j], table[i][j + 1])
   const diff: DiffWord[] = []
   let i = 0,
     j = 0,
     correct = 0,
     chars = 0
   while (i < a.length || j < b.length) {
-    if (i < a.length && j < b.length && a[i] === b[j]) {
+    if (i < a.length && j < b.length && matches(i, j)) {
       diff.push({ text: a[i], kind: 'correct' })
       correct++
       chars += credits[j]?.chars ?? 0
       i++
       j++
     } else if (j < b.length && (i === a.length || table[i][j + 1] > table[i + 1][j])) {
-      diff.push({ text: b[j++], kind: 'wrong' })
+      diff.push({ text: b[j], kind: 'wrong', typed: j })
+      j++
     } else {
       diff.push({ text: a[i], kind: 'missing', expected: i })
       i++
@@ -147,7 +218,10 @@ export function checkAnswer(expected: string, typed: string, words?: WhisperChun
       index += count
     }
   }
-  const graded = forgiveDoubtful(diff, doubtful)
+  const graded = markSpelling(forgiveDoubtful(diff, doubtful), editDistance)
+  const spelling = graded.filter((word) => word.kind === 'spelling')
+  correct += spelling.length / 2
+  chars += spelling.reduce((sum, word) => sum + (credits[word.typed ?? -1]?.chars ?? 0) / 2, 0)
   const disputedExpected = graded.filter(
     (word) => word.kind === 'disputed' && word.expected !== undefined,
   ).length
@@ -162,6 +236,9 @@ export function checkAnswer(expected: string, typed: string, words?: WhisperChun
     total,
     chars,
     accuracy: total ? Math.round((correct / total) * 100) : 100,
-    mistakes: graded.filter((word) => word.kind === 'missing').map((word) => word.text),
+    mistakes: graded
+      .filter((word) => word.kind === 'missing' && !names.has(word.expected ?? -1))
+      .map((word) => word.text),
+    spelling: spelling.map((word) => word.text),
   }
 }
