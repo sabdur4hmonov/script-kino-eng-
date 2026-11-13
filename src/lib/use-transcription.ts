@@ -195,6 +195,7 @@ export function useTranscription({
 
 export function applyTranscript(session: Session, cues: Cue[], source: string, done: boolean) {
   if (session.source && session.source !== source) return session
+  cues = cues.map((cue) => session.refinements?.[cue.id] ?? cue)
   const current = session.cues[session.index]
   const index = current
     ? Math.max(

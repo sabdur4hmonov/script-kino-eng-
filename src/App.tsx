@@ -8,7 +8,10 @@ import { ThemeToggle } from './ThemeToggle'
 import { FEEDBACK_URL } from './config'
 import type { Device, MediaScan, Session } from './types'
 import { parseSubtitles, timeLabel, cleanText } from './lib/subtitles'
-import { checkAnswer } from './lib/checking'
+import { checkAnswer, normalize } from './lib/checking'
+import { attemptResult, readyAlternative } from './lib/assessment'
+import { doubtfulThreshold, sentences } from './lib/transcript'
+import { WhisperClient } from './lib/whisper-client'
 import { fingerprint, loadSession, saveSession } from './lib/storage'
 import { scanMedia } from './lib/media'
 import { applyTranscript, useTranscription } from './lib/use-transcription'
@@ -117,6 +120,7 @@ export default function App() {
   const [includeShort, setIncludeShort] = useState(false)
   const [aiRetry, setAiRetry] = useState(0)
   const [waiting, setWaiting] = useState(false)
+  const [refining, setRefining] = useState(false)
   const [jump, setJump] = useState('')
   const pendingJump = useRef<number | undefined>(undefined)
   const [busy, setBusy] = useState<'scan' | 'extract' | ''>('')
@@ -156,6 +160,13 @@ export default function App() {
 
   const cue = session?.cues[session.index]
   const cueText = cue ? (session?.edits[cue.id] ?? cue.text) : ''
+  const cueWords = cue && session?.edits[cue.id] === undefined ? cue.words : undefined
+  const alternative =
+    cue && session?.ready?.length ? readyAlternative(cue, session.ready, normalize) : undefined
+  const doubtful =
+    !!alternative ||
+    (cueWords?.filter((word) => (word.confidence ?? 1) < doubtfulThreshold).length ?? 0) >=
+      Math.max(1, Math.ceil((cueWords?.length ?? 0) / 3))
   const auto = !session?.source || session.source === t.aiSource
   const ai = useTranscription({
     scan,
@@ -238,12 +249,12 @@ export default function App() {
     clearTimeout(draftTimer.current)
     const work = session?.work?.cueId === cue?.id ? session?.work : undefined
     setAnswer(work?.answer ?? '')
-    setResult(work?.checked ? checkAnswer(cueText, work.answer) : undefined)
+    setResult(work?.checked ? checkAnswer(cueText, work.answer, cueWords) : undefined)
     setRevealed(work?.revealed ?? false)
     setEditing(false)
     pasted.current = false
     typing.current = { ms: work?.ms ?? 0, last: 0, device: work?.device ?? initialDevice() }
-  }, [cue?.id, session?.fingerprint, session?.source, stopClip])
+  }, [cue?.id, cue?.text, session?.fingerprint, session?.source, stopClip])
 
   async function pickVideo(selected?: File | URL) {
     if (!selected) return
@@ -328,11 +339,17 @@ export default function App() {
     setEditing(false)
     typing.current = { ms: 0, last: 0, device }
     pasted.current = false
-    setSession((current) =>
-      current
-        ? { ...freshSession(current.fingerprint), cues, source, offset: current.offset }
-        : current,
-    )
+    setSession((current) => {
+      if (!current) return current
+      if (current.source === t.aiSource && current.cues.length) return { ...current, ready: cues }
+      return {
+        ...freshSession(current.fingerprint),
+        cues,
+        ready: cues,
+        source,
+        offset: current.offset,
+      }
+    })
     setNotice('')
     setError('')
   }
@@ -483,7 +500,8 @@ export default function App() {
     stopClip()
     clearTimeout(draftTimer.current)
     typing.current.last = 0
-    const checked = checkAnswer(cueText, answer)
+    const checked = checkAnswer(cueText, answer, cueWords)
+    const at = Date.now()
     setResult(checked)
     setRevealed(true)
     const measurement = typing.current
@@ -504,6 +522,7 @@ export default function App() {
           device: measurement.device,
           checked: true,
           revealed: true,
+          attemptAt: at,
         },
         attempts: [
           ...current.attempts,
@@ -514,7 +533,8 @@ export default function App() {
             chars: pasted.current ? 0 : checked.chars,
             ms: pasted.current ? 0 : measurement.ms,
             device: measurement.device,
-            at: Date.now(),
+            at,
+            mistakes: checked.mistakes,
           },
         ],
       }
@@ -562,6 +582,8 @@ export default function App() {
       device: typing.current.device,
       checked: !!result,
       revealed: shown || revealed,
+      attemptAt: session?.work?.attemptAt,
+      correction: session?.work?.correction,
     }
     const persist = () =>
       setSession((current) =>
@@ -605,6 +627,85 @@ export default function App() {
     speechSynthesis.cancel()
     speechSynthesis.speak(utterance)
   }
+  function correctCue(text: string | undefined, undo = false) {
+    if (!cue || !session) return
+    if (text !== undefined && !cleanText(text)) return
+    const nextText = text === undefined ? cue.text : cleanText(text)
+    const work = session.work
+    const checked =
+      work?.checked &&
+      checkAnswer(nextText, work.answer, text === undefined ? cue.words : undefined)
+    if (checked) setResult(checked)
+    setSession((current) => {
+      if (!current || current.cues[current.index]?.id !== cue.id) return current
+      const edits = { ...current.edits }
+      if (text === undefined) delete edits[cue.id]
+      else edits[cue.id] = nextText
+      const updated =
+        checked && work?.attemptAt !== undefined
+          ? attemptResult(current, work.attemptAt, checked)
+          : current
+      return {
+        ...updated,
+        edits,
+        work: work && {
+          ...work,
+          correction: undo ? undefined : { previous: current.edits[cue.id] },
+        },
+      }
+    })
+  }
+
+  async function refineCue() {
+    if (!cue || !ai.decode.current || !ai.contextRef.current || !cue.model || cue.model === 'small')
+      return
+    const { signal } = ai.contextRef.current
+    const worker = new WhisperClient()
+    const bigger: WhisperModel = cue.model === 'tiny' ? 'base' : 'small'
+    const start = Math.max(0, cue.start - 0.25)
+    const end = Math.min(cue.end + 0.25, start + 30)
+    setRefining(true)
+    try {
+      const pcm = await ai.decode.current(start, end, signal)
+      const output = await worker.run(pcm, bigger, webgpu, signal, () => {})
+      const lines = sentences({ ...output, start, end, model: bigger }, true)
+      if (!lines.length) throw new Error('No revised sentence')
+      const replacement = {
+        ...cue,
+        model: bigger,
+        text: lines.map((line) => line.text).join(' '),
+        words: lines.flatMap((line) => line.words ?? []),
+      }
+      setSession((current) => {
+        if (!current || signal.aborted) return current
+        const refinements = { ...current.refinements, [cue.id]: replacement }
+        const work = current.work
+        if (
+          current.cues[current.index]?.id === cue.id &&
+          work?.checked &&
+          work.attemptAt !== undefined &&
+          current.edits[cue.id] === undefined
+        ) {
+          current = attemptResult(
+            current,
+            work.attemptAt,
+            checkAnswer(replacement.text, work.answer, replacement.words),
+          )
+        }
+        return {
+          ...current,
+          refinements,
+          cues: current.cues.map((item) => (item.id === cue.id ? replacement : item)),
+        }
+      })
+    } catch {
+      if (!signal.aborted) setNotice(t.refineFailed)
+    } finally {
+      worker.dispose()
+      setRefining(false)
+    }
+  }
+
   function saveEdit() {
     if (!cue) return
     const value = cleanText(editText)
@@ -1094,6 +1195,20 @@ export default function App() {
                       <kbd>{t.keyEnter}</kbd> {t.hotkeyCheck}
                     </span>
                   </p>
+                  {doubtful && (
+                    <div className="doubtful-controls">
+                      <span className="doubtful-badge">{t.doubtfulSubtitle}</span>
+                      {cue.model && cue.model !== 'small' && (
+                        <button
+                          className="text-button"
+                          disabled={refining}
+                          onClick={() => void refineCue()}
+                        >
+                          {refining ? t.refining : t.refineSubtitle}
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {answerVisible && (
                     <div className="answer-panel" aria-live="polite">
                       <div className="answer-heading">
@@ -1115,10 +1230,47 @@ export default function App() {
                       </div>
                       <p className="answer-words" lang="en">
                         {cueText.split(/\s+/).map((word, i) => (
-                          <WordActions key={i} word={word} speak={speak} />
+                          <WordActions
+                            key={i}
+                            word={word}
+                            speak={speak}
+                            doubtful={(cueWords?.[i]?.confidence ?? 1) < doubtfulThreshold}
+                          />
                         ))}
                       </p>
                       <small>{t.speakHint}</small>
+                      {alternative && (
+                        <div className="doubtful-controls">
+                          <p>{t.compareSubtitles}</p>
+                          <p lang="en">{cue.text}</p>
+                          <p lang="en">{alternative}</p>
+                          <button className="text-button" onClick={() => correctCue(alternative)}>
+                            {t.useReadyLine}
+                          </button>
+                          <button
+                            className="text-button"
+                            onClick={() => correctCue(undefined, true)}
+                          >
+                            {t.useAiLine}
+                          </button>
+                        </div>
+                      )}
+                      {result && session?.work?.attemptAt !== undefined && (
+                        <div className="doubtful-controls">
+                          {session.work.correction ? (
+                            <button
+                              className="text-button"
+                              onClick={() => correctCue(session.work?.correction?.previous, true)}
+                            >
+                              {t.undoCorrection}
+                            </button>
+                          ) : (
+                            <button className="text-button" onClick={() => correctCue(answer)}>
+                              {t.acceptAnswer}
+                            </button>
+                          )}
+                        </div>
+                      )}
                       {result && (
                         <>
                           <div className="diff" lang="en">
@@ -1132,6 +1284,9 @@ export default function App() {
                             <span className="correct-dot">{t.correct}</span>
                             <span className="wrong-dot">{t.wrong}</span>
                             <span className="missing-dot">{t.missing}</span>
+                            {result.diff.some((word) => word.kind === 'disputed') && (
+                              <span>{t.disputed}</span>
+                            )}
                           </div>
                         </>
                       )}
@@ -1227,6 +1382,26 @@ export default function App() {
                 <Icon name="upload" size={17} />
                 {t.uploadSubtitles}
               </button>
+              {file && !auto && scan?.audio && (
+                <button
+                  className="text-button"
+                  onClick={() =>
+                    setSession(
+                      (current) =>
+                        current && {
+                          ...current,
+                          source: t.aiSource,
+                          cues: [],
+                          index: 0,
+                          completed: false,
+                          work: undefined,
+                        },
+                    )
+                  }
+                >
+                  {t.useAuto}
+                </button>
+              )}
               {file && auto && scan?.audio && (
                 <div className="ai-status">
                   <strong>{t.aiSource}</strong>

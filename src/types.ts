@@ -18,6 +18,8 @@ export type Attempt = {
   ms: number
   device: Device
   at: number
+  mistakes?: string[]
+  spelling?: string[]
 }
 export type Session = {
   fingerprint: string
@@ -28,6 +30,9 @@ export type Session = {
   edits: Record<string, string>
   attempts: Attempt[]
   mistakes: Record<string, number>
+  spelling?: Record<string, number>
+  ready?: Cue[]
+  refinements?: Record<string, Cue>
   completed: boolean
   work?: {
     cueId: string
@@ -35,6 +40,8 @@ export type Session = {
     ms: number
     device: Device
     checked: boolean
+    attemptAt?: number
+    correction?: { previous?: string }
     revealed: boolean
   }
 }

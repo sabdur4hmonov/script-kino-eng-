@@ -4,10 +4,12 @@ import { uz as t } from './i18n/uz'
 export function WordActions({
   word,
   count,
+  doubtful,
   speak,
 }: {
   word: string
   count?: number
+  doubtful?: boolean
   speak: (word: string) => void
 }) {
   const id = useId()
@@ -20,6 +22,8 @@ export function WordActions({
       <button
         type="button"
         popoverTarget={id}
+        data-doubtful={doubtful || undefined}
+        title={doubtful ? t.doubtfulWord : undefined}
         onClick={(event) => {
           const rect = event.currentTarget.getBoundingClientRect()
           if (panel.current) {

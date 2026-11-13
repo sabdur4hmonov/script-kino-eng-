@@ -1,4 +1,11 @@
-export type DiffWord = { text: string; kind: 'correct' | 'wrong' | 'missing' }
+import { forgiveDoubtful } from './assessment'
+import type { WhisperChunk } from './whisper-types'
+
+export type DiffWord = {
+  text: string
+  kind: 'correct' | 'wrong' | 'missing' | 'disputed' | 'spelling'
+  expected?: number
+}
 const small = [
   'zero',
   'one',
@@ -82,7 +89,7 @@ export function normalize(text: string): string[] {
   return value.split(/\s+/).filter(Boolean).slice(0, 400)
 }
 
-export function checkAnswer(expected: string, typed: string) {
+export function checkAnswer(expected: string, typed: string, words?: WhisperChunk[]) {
   const a = normalize(expected),
     b = normalize(typed)
   // Attribute expanded words back to the characters actually typed: entering
@@ -124,17 +131,37 @@ export function checkAnswer(expected: string, typed: string) {
       j++
     } else if (j < b.length && (i === a.length || table[i][j + 1] > table[i + 1][j])) {
       diff.push({ text: b[j++], kind: 'wrong' })
-    } else diff.push({ text: a[i++], kind: 'missing' })
+    } else {
+      diff.push({ text: a[i], kind: 'missing', expected: i })
+      i++
+    }
   }
   // Substitutions appear as a wrong typed word plus its missing expected word.
-  const total = Math.max(a.length, b.length)
+  const doubtful = new Set<number>()
+  if (words && normalize(words.map((word) => word.text).join(' ')).join(' ') === a.join(' ')) {
+    let index = 0
+    for (const word of words) {
+      const count = normalize(word.text).length
+      if (word.confidence !== undefined && word.confidence < 0.55)
+        for (let j = 0; j < count; j++) doubtful.add(index + j)
+      index += count
+    }
+  }
+  const graded = forgiveDoubtful(diff, doubtful)
+  const disputedExpected = graded.filter(
+    (word) => word.kind === 'disputed' && word.expected !== undefined,
+  ).length
+  const disputedTyped = graded.filter(
+    (word) => word.kind === 'disputed' && word.expected === undefined,
+  ).length
+  const total = Math.max(a.length - disputedExpected, b.length - disputedTyped)
   chars = Math.round(chars)
   return {
-    diff,
+    diff: graded,
     correct,
     total,
     chars,
     accuracy: total ? Math.round((correct / total) * 100) : 100,
-    mistakes: diff.filter((word) => word.kind === 'missing').map((word) => word.text),
+    mistakes: graded.filter((word) => word.kind === 'missing').map((word) => word.text),
   }
 }
