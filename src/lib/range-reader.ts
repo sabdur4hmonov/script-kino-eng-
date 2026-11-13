@@ -1,10 +1,15 @@
 /** Bounded random access. A movie's audio/video payload is skipped, never buffered. */
+export type MediaBytes = {
+  size: number
+  slice(start?: number, end?: number): { arrayBuffer(): Promise<ArrayBuffer> }
+}
+
 export class RangeReader {
   private cache = new Uint8Array(0)
   private cacheAt = 0
-  readonly file: Blob
+  readonly file: MediaBytes
   readonly signal?: AbortSignal
-  constructor(file: Blob, signal?: AbortSignal) {
+  constructor(file: MediaBytes, signal?: AbortSignal) {
     this.file = file
     this.signal = signal
   }

@@ -1501,3 +1501,34 @@ footer {
     scroll-behavior: auto !important;
   }
 }
+
+.media-link {
+  display: grid;
+  gap: 6px;
+  margin-top: 13px;
+  font-size: 12px;
+}
+.media-link > div {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+.media-link input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding-inline: 9px;
+}
+.media-link button {
+  flex-shrink: 0;
+}
+.audio-wrap {
+  aspect-ratio: auto;
+  padding: 24px 10px;
+}
+.audio-wrap audio {
+  width: 100%;
+}

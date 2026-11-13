@@ -11,6 +11,7 @@ import { parseSubtitles, timeLabel, cleanText } from './lib/subtitles'
 import { checkAnswer } from './lib/checking'
 import { fingerprint, loadSession, saveSession } from './lib/storage'
 import { scanMedia } from './lib/media'
+import { MEDIA_EXTENSIONS, mediaLink, probeMedia } from './lib/media-input'
 import { useVisualViewport } from './hooks'
 import './App.css'
 
@@ -100,7 +101,10 @@ export default function App() {
     helpTrigger.current = trigger
     setHelpTopic(topic)
   }
-  const [file, setFile] = useState<File>()
+  const [file, setFile] = useState<{ name: string; size: number }>()
+  const [mediaSource, setMediaSource] = useState<File | URL>()
+  const [link, setLink] = useState('')
+  const loadAbort = useRef<AbortController | undefined>(undefined)
   const [url, setUrl] = useState('')
   const [session, setSession] = useState<Session>()
   const [scan, setScan] = useState<MediaScan>()
@@ -122,7 +126,7 @@ export default function App() {
   const [dragging, setDragging] = useState(false)
   const [playing, setPlaying] = useState(false)
   const [listOpen, setListOpen] = useState(false)
-  const video = useRef<HTMLVideoElement>(null)
+  const video = useRef<HTMLMediaElement>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const subtitleInput = useRef<HTMLInputElement>(null)
@@ -157,6 +161,7 @@ export default function App() {
   useEffect(
     () => () => {
       generation.current++
+      loadAbort.current?.abort()
       abort.current?.abort()
       currentScan.current?.dispose()
       clearTimeout(clipTimer.current)
@@ -191,9 +196,13 @@ export default function App() {
     typing.current = { ms: work?.ms ?? 0, last: 0, device: work?.device ?? initialDevice() }
   }, [cue?.id, session?.fingerprint, session?.source, stopClip])
 
-  async function pickVideo(selected?: File) {
+  async function pickVideo(selected?: File | URL) {
     if (!selected) return
-    if (!/\.(mp4|mkv)$/i.test(selected.name)) {
+    const remote = selected instanceof URL
+    if (
+      !remote &&
+      !MEDIA_EXTENSIONS.split(',').some((ext) => selected.name.toLowerCase().endsWith(ext))
+    ) {
       setError(t.invalidVideo)
       return
     }
@@ -201,6 +210,9 @@ export default function App() {
     stopClip()
     clearTimeout(draftTimer.current)
     abort.current?.abort()
+    loadAbort.current?.abort()
+    const controller = new AbortController()
+    loadAbort.current = controller
     currentScan.current?.dispose()
     currentScan.current = undefined
     setScan(undefined)
@@ -208,40 +220,49 @@ export default function App() {
     setAnswer('')
     setResult(undefined)
     setRevealed(false)
-    setFile(selected)
-    setUrl(URL.createObjectURL(selected))
+    setFile(remote ? undefined : selected)
+    setMediaSource(selected)
+    setUrl(remote ? '' : URL.createObjectURL(selected))
     setBusy('scan')
     setError('')
     setNotice('')
     setStorageError(false)
     try {
-      const key = await fingerprint(selected)
+      const meta = remote
+        ? await probeMedia(selected, controller.signal)
+        : { name: selected.name, size: selected.size, key: await fingerprint(selected) }
+      if (run !== generation.current) return
       let restored: Session | undefined
       try {
-        restored = await loadSession(key)
+        restored = await loadSession(meta.key)
       } catch {
         if (run === generation.current) setStorageError(true)
       }
       if (run !== generation.current) return
-      setSession(restored ?? freshSession(key))
-      if (restored?.cues.length) setNotice(t.restored)
+      if (!remote) setSession(restored ?? freshSession(meta.key))
       try {
-        const info = await scanMedia(selected)
+        const info = await scanMedia(selected, meta.size, controller.signal)
         if (run !== generation.current) {
           info.dispose()
           return
         }
         currentScan.current = info
         setScan(info)
+        if (remote) {
+          setFile(meta)
+          setUrl(selected.href)
+          setSession(restored ?? freshSession(meta.key))
+        }
+        if (restored?.cues.length) setNotice(t.restored)
         const preferred =
           info.tracks.find((track) => track.supported && /^(eng|en)(-|$)/i.test(track.language)) ??
           info.tracks.find((track) => track.supported)
         setTrackId(preferred?.id ?? '')
       } catch {
-        if (run === generation.current) setNotice(t.scanError)
+        if (run === generation.current) setNotice(remote ? t.rangeBlocked : t.scanError)
       }
     } catch {
-      if (run === generation.current) setError(t.fingerprintError)
+      if (run === generation.current) setError(remote ? t.rangeBlocked : t.fingerprintError)
     } finally {
       if (run === generation.current) setBusy('')
     }
@@ -548,6 +569,36 @@ export default function App() {
     .slice(0, 30)
   const answerVisible = revealed && !playing
 
+  const Playback =
+    (scan?.audioOnly ?? !!file?.name.match(/\.(mp3|m4a|wav|ogg)$/i)) ? 'audio' : 'video'
+  const linkForm = (
+    <form
+      className="media-link"
+      onSubmit={(event) => {
+        event.preventDefault()
+        const parsed = mediaLink(link)
+        if (!parsed.url) {
+          setError(parsed.error === 'page' ? t.platformLink : t.invalidLink)
+          return
+        }
+        void pickVideo(parsed.url)
+      }}
+    >
+      <label htmlFor="media-url">{t.mediaLink}</label>
+      <div>
+        <input
+          id="media-url"
+          type="text"
+          inputMode="url"
+          value={link}
+          onChange={(event) => setLink(event.target.value)}
+        />
+        <button type="submit" className="button" disabled={!link.trim() || busy === 'scan'}>
+          {t.openLink}
+        </button>
+      </div>
+    </form>
+  )
   return (
     <div className={`app-shell ${file ? 'studio' : 'landing'}${cue ? ' has-cues' : ''}`}>
       <header className="site-header">
@@ -697,7 +748,7 @@ export default function App() {
                 ref={fileInput}
                 hidden
                 type="file"
-                accept=".mp4,.mkv,video/mp4,video/x-matroska"
+                accept={MEDIA_EXTENSIONS}
                 aria-label={t.chooseVideo}
                 onChange={(event) => {
                   void pickVideo(event.target.files?.[0])
@@ -705,14 +756,19 @@ export default function App() {
                 }}
               />
               {url ? (
-                <div className={`video-wrap${playing ? ' is-playing' : ''}`}>
-                  <video
-                    ref={video}
+                <div
+                  className={`video-wrap ${Playback === 'audio' ? 'audio-wrap' : ''}${playing ? ' is-playing' : ''}`}
+                >
+                  <Playback
+                    ref={(element) => {
+                      video.current = element
+                    }}
+                    crossOrigin={mediaSource instanceof URL ? 'anonymous' : undefined}
                     src={url}
                     controls
                     playsInline
                     preload="metadata"
-                    aria-label={t.videoLabel}
+                    aria-label={Playback === 'audio' ? t.audioLabel : t.videoLabel}
                     onError={() => setError(t.playbackError)}
                     onLoadedMetadata={() => {
                       if (video.current)
@@ -775,6 +831,7 @@ export default function App() {
                   </div>
                 </div>
               )}
+              {linkForm}
               <div className="video-foot">
                 <span>
                   <Icon name="lock" size={13} />
@@ -1062,7 +1119,7 @@ export default function App() {
                 </h2>
                 <span className="section-number">02</span>
               </div>
-              <p className="panel-copy">{t.subtitlesHint}</p>
+              <p className="panel-copy">{t.readySubtitles}</p>
               <button
                 type="button"
                 className="help-link subtitle-help"

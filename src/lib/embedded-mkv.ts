@@ -1,3 +1,4 @@
+import type { MediaBytes } from './range-reader'
 import type { Cue, Track } from '../types'
 import { cleanText } from './subtitles'
 import { RangeReader, ebml, elements } from './range-reader'
@@ -13,7 +14,7 @@ async function float(reader: RangeReader, item: Element) {
     view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength)
   return bytes.length === 4 ? view.getFloat32(0) : view.getFloat64(0)
 }
-export async function inspectMkv(file: Blob) {
+export async function inspectMkv(file: MediaBytes) {
   const reader = new RangeReader(file)
   let segment: Element | undefined
   for await (const item of elements(reader, 0, file.size))

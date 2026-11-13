@@ -16,7 +16,7 @@ export const uz = {
   changeVideo: 'Boshqa video',
   dropVideo: 'Kinongizni shu yerga tashlang',
   videoHint: 'yoki qurilmangizdan fayl tanlang',
-  videoFormats: 'MP4 / MKV · Katta fayllar ham mumkin',
+  videoFormats: 'MP4 / MKV / WEBM / MOV · MP3 / M4A / WAV / OGG',
   localNote: 'Video qurilmangizda qoladi. Hech qayerga yuklanmaydi.',
   videoEmpty: 'Birinchi sahna sizdan boshlanadi',
   videoEmptyHint: 'Mahalliy video tanlang va inglizcha subtitr qo‘shing.',
@@ -95,7 +95,7 @@ export const uz = {
   storageError:
     'Brauzer xotirasiga saqlab bo‘lmadi. Mashq davom etadi, ammo natijalar qayta ochilganda tiklanmasligi mumkin.',
   fingerprintError: 'Faylni aniqlab bo‘lmadi. Videoni qayta tanlang.',
-  invalidVideo: 'MP4 yoki MKV video faylini tanlang.',
+  invalidVideo: 'Video yoki ovoz faylini tanlang (MP4, MKV, WEBM, MOV, MP3, M4A, WAV, OGG).',
   finished: 'Ajoyib, mashq tugadi!',
   finishedHint: 'Natijalaringiz saqlandi. Qiyin so‘zlarni yana bir bor tinglab ko‘ring.',
   restart: 'Qayta boshlash',
@@ -179,4 +179,12 @@ export const uz = {
   keyEnter: 'Enter',
   hotkeyReplay: '— qayta tinglash',
   hotkeyCheck: '— tekshirish / keyingi',
+  mediaLink: 'Havola qo‘yish',
+  openLink: 'Havolani ochish',
+  invalidLink: 'Videoga yoki ovoz fayliga olib boradigan HTTPS havolasini kiriting.',
+  platformLink:
+    'Bu platforma havolasi bevosita ochilmaydi. Avval faylni yuklab olib, shu yerga tashlang.',
+  rangeBlocked: 'Bu sayt faylni berishga ruxsat bermadi. Faylni yuklab olib, shu yerga tashlang.',
+  audioLabel: 'Ovoz fayli',
+  readySubtitles: 'Tayyor subtitr — tezroq',
 } as const

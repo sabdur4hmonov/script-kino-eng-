@@ -1,3 +1,4 @@
+import type { MediaBytes } from './range-reader'
 import type { Cue, Track } from '../types'
 import { cleanText } from './subtitles'
 import { RangeReader, boxes, child } from './range-reader'
@@ -5,7 +6,7 @@ import type { Box } from './range-reader'
 type Mp4Track = Track & { table: Box; timescale: number; timeOffset: number }
 const MAX_SAMPLES = 200_000
 
-export async function inspectMp4(file: Blob) {
+export async function inspectMp4(file: MediaBytes) {
   const reader = new RangeReader(file),
     tracks: Mp4Track[] = []
   let moov: Box | undefined,
