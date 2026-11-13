@@ -23,7 +23,6 @@ export const uz = {
   videoLabel: 'Mahalliy video',
   subtitleTitle: 'Inglizcha subtitrlar',
   uploadSubtitles: 'SRT / VTT qo‘shish',
-  automatic: 'Avtomatik (tez orada)',
   subtitlesHint: 'Alohida subtitr faylini tanlang yoki video ichidagi yo‘lakdan foydalaning.',
   trackLabel: 'Video ichidagi subtitr',
   trackPlaceholder: 'Yo‘lakni tanlang',
@@ -117,7 +116,7 @@ export const uz = {
   loading: 'Yuklanmoqda…',
   numbered: 'Raqam va qisqartmalar bir xil qabul qilinadi.',
   privacyTitle: 'Sizning kinoingiz. Sizning mashqingiz.',
-  privacyBody: 'Videolar yuklanmaydi. Subtitr va natijalar faqat shu brauzer xotirasida saqlanadi.',
+  privacyBody: 'Video va ovoz qurilmangizdan chiqmaydi. Faqat bir martalik AI modeli yuklanadi.',
   minute: 'daq',
   percent: '%',
   close: 'Yopish',
@@ -171,7 +170,7 @@ export const uz = {
   howTitle: 'Qanday ishlaydi?',
   howSteps: [
     ['Video tanlang', 'MP4 yoki MKV faylini qurilmangizdan oching.'],
-    ['Subtitr qo‘shing', 'Ichki inglizcha yo‘lakni yoki SRT / VTT faylini tanlang.'],
+    ['Subtitr tayyorlanadi', 'Whisper ovozdan inglizcha jumlalarni qurilmangizda yaratadi.'],
     ['Tinglang va yozing', 'Eshitgan jumlangizni yozing va javobingizni tekshiring.'],
   ],
   keyCtrl: 'Ctrl',
@@ -219,4 +218,8 @@ export const uz = {
   useAuto: 'Avtomatik subtitrga o‘tish',
   spelling: 'Imlo',
   spellingMistakes: 'Imlo xatolari',
+  useReadySource: 'Tayyor subtitrga o‘tish',
+  aiModelUnit: 'MB',
+  aiRemoteFallback:
+    'Bu havoladagi ovoz formatini brauzer o‘qiy olmadi. Faylni yuklab olib, shu yerga tashlang.',
 } as const

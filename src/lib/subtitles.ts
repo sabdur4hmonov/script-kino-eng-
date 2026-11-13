@@ -64,3 +64,9 @@ export function timeLabel(seconds: number): string {
     .toString()
     .padStart(2, '0')}:${(value % 60).toString().padStart(2, '0')}`
 }
+
+export function durationLabel(seconds: number) {
+  if (seconds < 3600) return timeLabel(seconds)
+  const hours = Math.floor(seconds / 3600)
+  return hours + ':' + timeLabel(seconds % 3600)
+}

@@ -7,7 +7,7 @@ import { WordActions } from './WordActions'
 import { ThemeToggle } from './ThemeToggle'
 import { FEEDBACK_URL } from './config'
 import type { Device, MediaScan, Session } from './types'
-import { parseSubtitles, timeLabel, cleanText } from './lib/subtitles'
+import { parseSubtitles, timeLabel, durationLabel, cleanText } from './lib/subtitles'
 import { checkAnswer, normalize } from './lib/checking'
 import { attemptResult, readyAlternative } from './lib/assessment'
 import { doubtfulThreshold, sentences } from './lib/transcript'
@@ -172,7 +172,7 @@ export default function App() {
     scan,
     key: session?.fingerprint,
     enabled: auto,
-    position: cue?.start ?? 0,
+    position: cue?.start,
     model,
     webgpu,
     includeShort,
@@ -331,6 +331,10 @@ export default function App() {
   }
 
   function replaceCues(cues: Session['cues'], source: string) {
+    if (session?.source === t.aiSource && session.cues.length) {
+      setSession((current) => current && { ...current, ready: cues })
+      return
+    }
     stopClip()
     clearTimeout(draftTimer.current)
     setAnswer('')
@@ -341,7 +345,6 @@ export default function App() {
     pasted.current = false
     setSession((current) => {
       if (!current) return current
-      if (current.source === t.aiSource && current.cues.length) return { ...current, ready: cues }
       return {
         ...freshSession(current.fingerprint),
         cues,
@@ -1413,13 +1416,14 @@ export default function App() {
                   {ai.hasFallback && <span>{t.audioFallback}</span>}
                   {ai.corpus && (
                     <span>
-                      {timeLabel(ai.seconds)} / {timeLabel(ai.corpus.duration)} {t.aiProgress}
+                      {durationLabel(ai.seconds)} / {durationLabel(ai.corpus.duration)}{' '}
+                      {t.aiProgress}
                     </span>
                   )}
                   {ai.busy && (
                     <span>
                       {ai.bytes
-                        ? t.aiLoading + ' ' + (ai.bytes / 1e6).toFixed(1) + ' MB'
+                        ? t.aiLoading + ' ' + (ai.bytes / 1e6).toFixed(1) + ' ' + t.aiModelUnit
                         : t.aiPreparing}
                     </span>
                   )}
@@ -1427,7 +1431,11 @@ export default function App() {
                   {ai.done && !session?.cues.length && <span>{t.aiEmpty}</span>}
                   {ai.failed && (
                     <>
-                      <span>{t.aiFailed}</span>
+                      <span>
+                        {scan.audioWarning && mediaSource instanceof URL
+                          ? t.aiRemoteFallback
+                          : t.aiFailed}
+                      </span>
                       <button
                         type="button"
                         className="text-button"
@@ -1438,6 +1446,27 @@ export default function App() {
                     </>
                   )}
                   {ai.storageFailed && <span>{t.storageError}</span>}
+                  {!!session?.ready?.length && (
+                    <button
+                      className="text-button"
+                      onClick={() => {
+                        setSession((current) =>
+                          current?.ready?.length
+                            ? {
+                                ...current,
+                                source: t.readySubtitles,
+                                cues: current.ready,
+                                index: 0,
+                                completed: false,
+                                work: undefined,
+                              }
+                            : current,
+                        )
+                      }}
+                    >
+                      {t.useReadySource}
+                    </button>
+                  )}
                   <details>
                     <summary>{t.aiSettings}</summary>
                     <label>

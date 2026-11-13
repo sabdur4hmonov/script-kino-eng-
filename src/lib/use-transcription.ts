@@ -23,7 +23,7 @@ export function useTranscription({
   scan?: MediaScan
   key?: string
   enabled: boolean
-  position: number
+  position?: number
   model: WhisperModel
   webgpu: boolean
   includeShort: boolean
@@ -130,7 +130,7 @@ export function useTranscription({
     if (!active || !decoder || !controller || !worker || !visible || task.current || failed || !key)
       return
     const signal = controller.signal
-    const range = nextWindow(active, position, priority)
+    const range = nextWindow(active, position ?? coverage(active), priority)
     if (!range) {
       if (priority !== undefined) prioritize(undefined)
       return
