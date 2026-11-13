@@ -1,6 +1,7 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
+import { buildInfo, socialMetadata } from './build-meta.ts'
 import { createRequire } from 'node:module'
 import { readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
@@ -33,7 +34,8 @@ function remoteOrtWasm(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), socialMetadata()],
+  define: buildInfo(),
   worker: { format: 'es', plugins: () => [remoteOrtWasm()] },
   build: {
     // Serve even small font subsets as files under the same-origin CSP.

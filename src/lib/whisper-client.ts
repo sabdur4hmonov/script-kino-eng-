@@ -1,3 +1,4 @@
+import { reportError } from './diagnostics'
 import type { WhisperModel, WhisperReply, WhisperRequest } from './whisper-types'
 
 export class WhisperClient {
@@ -21,28 +22,42 @@ export class WhisperClient {
         /* Browser policy may deny storage. */
       }
     }
-    const worker = (this.worker ??= new Worker(new URL('../whisper.worker.ts', import.meta.url), {
-      type: 'module',
-    }))
+    let worker: Worker
+    try {
+      worker = (this.worker ??= new Worker(new URL('../whisper.worker.ts', import.meta.url), {
+        type: 'module',
+      }))
+    } catch (error) {
+      reportError('worker', error)
+      throw error
+    }
     const id = ++this.requestId
     return new Promise<Extract<WhisperReply, { type: 'result' }>>((resolve, reject) => {
       const cleanup = () => {
         signal.removeEventListener('abort', cancel)
         worker.removeEventListener('message', receive)
         worker.removeEventListener('error', fail)
+        worker.removeEventListener('messageerror', fail)
       }
       const cancel = () => {
         cleanup()
         this.dispose()
         reject(signal.reason)
       }
-      const fail = () => {
+      const fail = (event?: Event) => {
+        event?.preventDefault()
         cleanup()
         this.dispose()
-        reject(new Error('Whisper worker failed'))
+        const error = new Error('Whisper worker failed')
+        reportError('worker', error)
+        reject(error)
       }
       const receive = (event: MessageEvent<WhisperReply>) => {
         const message = event.data
+        if (!message || !['progress', 'result', 'error'].includes(message.type)) {
+          fail()
+          return
+        }
         if (message.id !== id) return
         if (message.type === 'progress') {
           progress(message.bytes)
@@ -52,14 +67,21 @@ export class WhisperClient {
         if (message.type === 'result') resolve(message)
         else {
           this.dispose()
-          reject(new Error('Whisper inference failed'))
+          const error = new Error('Whisper inference failed')
+          reportError('worker', error)
+          reject(error)
         }
       }
       worker.addEventListener('message', receive)
       worker.addEventListener('error', fail, { once: true })
+      worker.addEventListener('messageerror', fail, { once: true })
       signal.addEventListener('abort', cancel, { once: true })
       const request: WhisperRequest = { id, pcm, model, webgpu }
-      worker.postMessage(request, [pcm.buffer])
+      try {
+        worker.postMessage(request, [pcm.buffer])
+      } catch {
+        fail()
+      }
     })
   }
 

@@ -1,7 +1,7 @@
 import { test as base } from '@playwright/test'
 
 export const test = base.extend({
-  page: async ({ page }, use) => {
+  page: async ({ page }, runWithPage) => {
     await page.addInitScript(() => {
       const native = window.Worker
       class MockWhisper extends EventTarget {
@@ -26,7 +26,7 @@ export const test = base.extend({
         },
       })
     })
-    await use(page)
+    await runWithPage(page)
   },
 })
 export { expect } from '@playwright/test'

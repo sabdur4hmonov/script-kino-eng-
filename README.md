@@ -45,6 +45,27 @@ npm run deploy
 
 If that project name is taken, change `name` in `wrangler.toml` and `--project-name` in the deploy script. Authentication belongs to your local Cloudflare CLI; no credentials are bundled into the site. The build includes Cloudflare `_headers` for WASM and HTTPS media access. Whisper weights and ONNX Runtime are fetched on demand. The matching runtime binaries and FFmpeg core are served from jsDelivr so no deployed asset exceeds the Pages 25 MiB limit.
 
+### Web Analytics (optional)
+
+1. In the Cloudflare dashboard, open **Analytics & Logs** → **Web Analytics** → **Add site**, then enter your Pages hostname.
+2. Choose manual setup and copy the beacon token into `CF_ANALYTICS_TOKEN` in `src/config.ts`. Use manual setup alone so Pages does not also inject a beacon.
+3. Rebuild and redeploy. The cookieless beacon uses page and performance metrics in production only. An empty token disables it. The app passes no file names, subtitle text, or practice data to the beacon.
+
+### Social preview and home-screen icons
+
+The build uses `SITE_URL`, then `CF_PAGES_URL`, then `https://kinotingla.pages.dev` for absolute social preview links. Set `SITE_URL` to your public HTTPS origin if you deploy under another hostname. To regenerate the images and manifest with Node 24:
+
+```powershell
+npx playwright install chromium
+npm run generate:social
+```
+
+Set `PLAYWRIGHT_CHANNEL=msedge` in your environment to use an installed Edge browser instead. The generator uses the bundled fonts, the SVG favicon, and the Uzbek strings.
+
+### Error reports
+
+Set `FEEDBACK_URL` in `src/config.ts` to your Telegram destination. The report button copies a short diagnostic and opens that link. If clipboard access fails, the app offers the same text for manual copying. Unknown error messages and stack text are filtered to keep inputs private. Cloudflare builds use the provided commit SHA, and local builds read it from Git when available.
+
 ## Practice
 
 - Pick a local video or audio file. Playback uses `URL.createObjectURL(file)`. Direct links need CORS, byte ranges, and an exposed `Content-Range` header. Platform share pages must be opened separately to obtain a local file.

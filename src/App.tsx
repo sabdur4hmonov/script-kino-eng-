@@ -5,6 +5,8 @@ import { HelpDialog } from './HelpDialog'
 import type { HelpTopic } from './HelpDialog'
 import { WordActions } from './WordActions'
 import { ThemeToggle } from './ThemeToggle'
+import { PracticeArea } from './ErrorReporting'
+import { updateDiagnostics } from './lib/diagnostics'
 import { FEEDBACK_URL } from './config'
 import type { Device, MediaScan, Session } from './types'
 import { parseSubtitles, timeLabel, durationLabel, cleanText } from './lib/subtitles'
@@ -213,8 +215,17 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    document.title = `${t.brand}${t.brandAccent} · ${t.tagline}`
-    document.querySelector('meta[name="description"]')?.setAttribute('content', t.description)
+    updateDiagnostics({
+      model,
+      fileType: file?.name.match(/\.([a-z0-9]{1,5})$/i)?.[1]?.toLowerCase(),
+      size: file?.size,
+      codec: scan?.audioCodec,
+    })
+    return () => updateDiagnostics({})
+  }, [model, file, scan?.audioCodec])
+  useEffect(() => {
+    document.title = t.socialTitle
+    document.querySelector('meta[name="description"]')?.setAttribute('content', t.socialDescription)
   }, [])
   useEffect(() => {
     return () => {
@@ -838,7 +849,7 @@ export default function App() {
           <ThemeToggle />
         </div>
       </header>
-      <main>
+      <PracticeArea>
         <nav className="steps" aria-label={t.progress}>
           {[t.stepVideo, t.stepSubtitles, t.stepPractice].map((label, i) => (
             <span
@@ -1801,7 +1812,7 @@ export default function App() {
             <p>{t.privacyBody}</p>
           </div>
         </div>
-      </main>
+      </PracticeArea>
       <footer>
         <span>{t.footer}</span>
         <span>{t.footerNote}</span>

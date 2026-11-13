@@ -1,4 +1,5 @@
 import { FFmpeg, FFFSType } from '@ffmpeg/ffmpeg'
+import { reportError } from './diagnostics'
 import { sampleRate } from './whisper-types'
 
 const core = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.9/dist/esm/ffmpeg-core'
@@ -65,7 +66,13 @@ export function fallbackAudio(file: File, lifetime: AbortSignal) {
       }
     })
     queue = job.catch(() => {})
-    return job
+    return job.catch(error => {
+      if (!lifetime.aborted && !signal.aborted) {
+        const failure = typeof error === 'string' ? new Error('FFmpeg worker failed') : error
+        reportError('worker', failure)
+      }
+      throw error
+    })
   }
   return {
     async decode(start: number, end: number, signal: AbortSignal) {

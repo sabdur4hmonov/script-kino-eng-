@@ -1523,6 +1523,23 @@ footer {
   color: var(--text);
   padding-inline: 9px;
 }
+.error-report {
+  margin: 1rem auto;
+  padding: 1rem;
+  width: min(100%, 50rem);
+}
+
+.error-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.error-report textarea {
+  width: 100%;
+}
+
 .media-link button {
   flex-shrink: 0;
 }

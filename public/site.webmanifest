@@ -1,0 +1,29 @@
+{
+  "id": "/",
+  "name": "kinotingla — kino orqali IELTS diktant",
+  "short_name": "kinotingla",
+  "description": "Sevimli kino va audiolaringiz bilan inglizcha diktant mashq qiling. Tinglang, yozing va javobingizni tekshiring.",
+  "lang": "uz",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0c0b0f",
+  "theme_color": "#0c0b0f",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
