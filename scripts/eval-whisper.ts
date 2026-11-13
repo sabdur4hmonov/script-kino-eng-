@@ -45,17 +45,6 @@ if (!jobs.length) {
       }) ?? []
     )
   }
-  function wordErrors(reference: string[], output: string[]) {
-    const ids = new Map<string, string>()
-    const encode = (tokens: string[]) =>
-      tokens
-        .map((token) => {
-          if (!ids.has(token)) ids.set(token, String.fromCharCode(ids.size + 1))
-          return ids.get(token)!
-        })
-        .join('')
-    return editDistance(encode(reference), encode(output))
-  }
   for (const model of models) {
     let errors = 0,
       wordCount = 0,
@@ -121,7 +110,7 @@ if (!jobs.length) {
         start = next
       }
       const time = (performance.now() - started) / 1000
-      const distance = wordErrors(reference, output)
+      const distance = editDistance(reference, output)
       console.log(
         `${model}  ${basename(job.file)}  WER ${((100 * distance) / reference.length).toFixed(1)}%  ${(time / (duration / 60)).toFixed(1)} s/audio min`,
       )

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './mock-whisper'
 import { resolve } from 'node:path'
 
 test('word popovers offer translation from answers and mistakes without background requests', async ({

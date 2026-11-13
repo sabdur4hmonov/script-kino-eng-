@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './mock-whisper'
 import { resolve } from 'node:path'
 const media = (name: string) => resolve('test-media', name)
 

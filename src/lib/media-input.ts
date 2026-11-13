@@ -30,7 +30,13 @@ export function mediaLink(value: string) {
 
 export async function requireRange(response: Response) {
   const range = /^bytes (\d+)-(\d+)\/(\d+)$/i.exec(response.headers.get('content-range') ?? '')
-  if (response.status === 206 && range && Number(range[2]) < Number(range[3])) return range
+  if (
+    response.status === 206 &&
+    range &&
+    Number(range[1]) <= Number(range[2]) &&
+    Number(range[2]) < Number(range[3])
+  )
+    return range
   await response.body?.cancel()
   throw new Error('Media server must expose a valid HTTP Content-Range')
 }

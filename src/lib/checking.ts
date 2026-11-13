@@ -97,7 +97,7 @@ const variants: Record<string, string> = {
   specialise: 'specialize',
   ok: 'okay',
 }
-export function editDistance(a: string, b: string) {
+export function editDistance(a: ArrayLike<string>, b: ArrayLike<string>) {
   let row = Array.from({ length: b.length + 1 }, (_, index) => index)
   for (let i = 0; i < a.length; i++) {
     const next = [i + 1]
@@ -239,6 +239,6 @@ export function checkAnswer(expected: string, typed: string, words?: WhisperChun
     mistakes: graded
       .filter((word) => word.kind === 'missing' && !names.has(word.expected ?? -1))
       .map((word) => word.text),
-    spelling: spelling.map((word) => word.text),
+    spelling: spelling.filter((word) => !names.has(word.expected ?? -1)).map((word) => word.text),
   }
 }

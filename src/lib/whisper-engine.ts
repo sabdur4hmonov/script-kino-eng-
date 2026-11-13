@@ -1,4 +1,4 @@
-import { pipeline, LogitsProcessorList, env } from '@huggingface/transformers'
+import { pipeline, TextStreamer, env } from '@huggingface/transformers'
 import type {
   AutomaticSpeechRecognitionPipeline,
   ProgressInfo,
@@ -58,37 +58,48 @@ export async function transcribePcm(
     recognizer = await load(model, 'wasm', report)
   }
   const duration = pcm.length / sampleRate
-  const processor = new LogitsProcessorList()
-  // Transformers' ASR result exposes timestamps but omits token scores. Capture
-  // the greedy distribution before token selection; omit unavailable metrics.
+  // Capture logits before Whisper masks timestamp/silence tokens. The streamer
+  // supplies the actual selected token, including when it is a timestamp.
   let scores: { token: number; value: number }[] = []
   let noSpeech: number | undefined
+  let nextLogits: Float32Array | undefined
+  const stream = new TextStreamer(recognizer.tokenizer)
+  stream.end = () => {
+    nextLogits = undefined
+  }
+  stream.put = ([[token]]) => {
+    if (token === undefined || !nextLogits) return
+    const value = tokenProbability(nextLogits, Number(token))
+    if (value !== undefined) scores.push({ token: Number(token), value })
+    nextLogits = undefined
+  }
+  const forward = recognizer.model.forward
   const silenceId = recognizer.tokenizer.convert_tokens_to_ids('<|nospeech|>')
-  processor.push(((_ids: bigint[][], logits: Tensor) => {
-    const values = logits.data as Float32Array
-    let token = 0
-    for (let i = 1; i < values.length; i++) if (values[i] > values[token]) token = i
-    if (!scores.length && typeof silenceId === 'number')
-      noSpeech = tokenProbability(values, silenceId)
-    const value = tokenProbability(values, token)
-    if (value !== undefined) scores.push({ token, value })
-    return logits
-  }) as unknown as Parameters<LogitsProcessorList['push']>[0])
+  recognizer.model.forward = async function (inputs) {
+    const output = await forward.call(this, inputs)
+    const logits = (output.logits as Tensor).slice(null, -1, null).to('float32')
+    nextLogits = new Float32Array(logits.data as Float32Array)
+    if (!scores.length) noSpeech = tokenProbability(nextLogits, silenceId)
+    return output
+  }
   let output: TimestampOutput
   let wordTimestamps = true
   try {
     output = (await recognizer(pcm, {
       return_timestamps: 'word',
-      logits_processor: processor,
+      streamer: stream,
     })) as TimestampOutput
   } catch {
     scores = []
     noSpeech = undefined
+    nextLogits = undefined
     wordTimestamps = false
     output = (await recognizer(pcm, {
       return_timestamps: true,
-      logits_processor: processor,
+      streamer: stream,
     })) as TimestampOutput
+  } finally {
+    recognizer.model.forward = forward
   }
   const tokens = scores.map((score) => score.token)
   // Match character spans in the same tokenizer output so contractions and

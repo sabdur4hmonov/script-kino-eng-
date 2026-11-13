@@ -162,7 +162,9 @@ export default function App() {
   const cueText = cue ? (session?.edits[cue.id] ?? cue.text) : ''
   const cueWords = cue && session?.edits[cue.id] === undefined ? cue.words : undefined
   const alternative =
-    cue && session?.ready?.length ? readyAlternative(cue, session.ready, normalize) : undefined
+    cue?.model && session?.ready?.length
+      ? readyAlternative(cue, session.ready, normalize)
+      : undefined
   const doubtful =
     !!alternative ||
     (cueWords?.filter((word) => (word.confidence ?? 1) < doubtfulThreshold).length ?? 0) >=
@@ -173,6 +175,7 @@ export default function App() {
     key: session?.fingerprint,
     enabled: auto,
     position: cue?.start,
+    needsNext: waiting,
     model,
     webgpu,
     includeShort,
@@ -192,10 +195,10 @@ export default function App() {
     },
   })
   useEffect(() => {
-    if (pendingJump.current !== undefined && cue && cue.end >= pendingJump.current)
+    if (pendingJump.current !== undefined && (ai.done || (cue && cue.end >= pendingJump.current)))
       pendingJump.current = undefined
     setWaiting(false)
-  }, [cue?.id])
+  }, [cue?.id, ai.done])
   const stopClip = useCallback(() => {
     clearTimeout(clipTimer.current)
     clipEnd.current = undefined
@@ -224,6 +227,9 @@ export default function App() {
       loadAbort.current?.abort()
       abort.current?.abort()
       currentScan.current?.dispose()
+      audioClipRun.current?.abort()
+      fallbackPlayer.current?.pause()
+      if (audioClipUrl.current) URL.revokeObjectURL(audioClipUrl.current)
       clearTimeout(clipTimer.current)
       clearTimeout(draftTimer.current)
     },
@@ -482,7 +488,6 @@ export default function App() {
     stopClip()
     if (auto && ai.corpus && !ai.done && session && session.index >= session.cues.length - 1) {
       setWaiting(true)
-      if (cue) ai.prioritize(cue.end)
       return
     }
     clearTimeout(draftTimer.current)
@@ -1129,6 +1134,7 @@ export default function App() {
                           onClick={() => {
                             setSpeed(value)
                             if (video.current) video.current.playbackRate = value
+                            if (fallbackPlayer.current) fallbackPlayer.current.playbackRate = value
                           }}
                         >
                           {value === 1 ? t.speedNormal : t.speedSlow}

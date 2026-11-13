@@ -14,6 +14,7 @@ export function useTranscription({
   key,
   enabled,
   position,
+  needsNext,
   model,
   webgpu,
   includeShort,
@@ -24,6 +25,7 @@ export function useTranscription({
   key?: string
   enabled: boolean
   position?: number
+  needsNext: boolean
   model: WhisperModel
   webgpu: boolean
   includeShort: boolean
@@ -130,12 +132,20 @@ export function useTranscription({
     if (!active || !decoder || !controller || !worker || !visible || task.current || failed || !key)
       return
     const signal = controller.signal
-    const range = nextWindow(active, position ?? coverage(active), priority)
+    const positionNow = position ?? coverage(active)
+    const frontier = needsNext
+      ? active.windows.reduce(
+          (end, window) => (window.start <= end + 0.001 ? Math.max(end, window.end) : end),
+          positionNow,
+        )
+      : positionNow
+    const range = nextWindow(active, frontier, priority)
     if (!range) {
       if (priority !== undefined) prioritize(undefined)
       return
     }
     task.current = true
+    setBytes(0)
     setBusy(true)
     void (async () => {
       const pcm = await decoder(range.start, range.end, signal)
@@ -174,7 +184,7 @@ export function useTranscription({
         if (!signal.aborted) setBusy(false)
         setCycle((value) => value + 1)
       })
-  }, [active, position, priority, model, webgpu, visible, failed, cycle, key])
+  }, [active, position, needsNext, priority, model, webgpu, visible, failed, cycle, key])
 
   return {
     corpus: active,

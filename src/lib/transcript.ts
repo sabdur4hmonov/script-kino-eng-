@@ -68,6 +68,8 @@ export function sentences(window: TranscriptWindow, includeShort: boolean): Cue[
     words = []
   }
   for (const chunk of window.chunks) {
+    if (!Number.isFinite(chunk.start) || !Number.isFinite(chunk.end) || chunk.end <= chunk.start)
+      continue
     if ((chunk.noSpeech ?? 0) >= 0.65 || (chunk.confidence ?? 1) < 0.12 || noise(chunk.text)) {
       flush()
       continue

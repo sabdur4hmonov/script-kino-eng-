@@ -340,6 +340,7 @@ footer {
   border: 1px solid color-mix(in srgb, var(--screen-amber) 40%, transparent);
 }
 .example-card {
+  pointer-events: none;
   position: absolute;
   z-index: 1;
   right: 12px;

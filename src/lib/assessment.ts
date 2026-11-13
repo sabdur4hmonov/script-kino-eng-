@@ -23,7 +23,14 @@ export function attemptResult(
   adjust(spelling, old.spelling ?? [], -1)
   adjust(spelling, next.spelling ?? [], 1)
   const attempts = session.attempts.slice()
-  const replacement: Attempt = { ...old, ...next, chars: old.ms ? next.chars : 0 }
+  const replacement: Attempt = {
+    ...old,
+    mistakes: next.mistakes,
+    spelling: next.spelling,
+    correct: next.correct,
+    total: next.total,
+    chars: old.ms ? next.chars : 0,
+  }
   attempts[index] = replacement
   return { ...session, attempts, mistakes, spelling }
 }
@@ -98,7 +105,12 @@ export function markSpelling(diff: DiffWord[], distance: (a: string, b: string) 
       }
     }
     for (const word of run)
-      if (!removed.has(word)) graded.push(matched.has(word) ? { ...word, kind: 'spelling' } : word)
+      if (!removed.has(word))
+        graded.push(
+          matched.has(word)
+            ? { ...word, expected: matched.get(word)?.expected, kind: 'spelling' }
+            : word,
+        )
     i = end
   }
   return graded
