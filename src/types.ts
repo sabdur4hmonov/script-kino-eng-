@@ -1,4 +1,14 @@
-export type Cue = { id: string; start: number; end: number; text: string }
+import type { WhisperChunk, WhisperModel } from './lib/whisper-types'
+
+export type Cue = {
+  id: string
+  start: number
+  end: number
+  text: string
+  words?: WhisperChunk[]
+  model?: WhisperModel
+  alternative?: string
+}
 export type Device = 'phone' | 'desktop'
 export type Attempt = {
   cueId: string

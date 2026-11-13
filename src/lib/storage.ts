@@ -1,3 +1,4 @@
+import type { Corpus } from './transcript'
 import type { Session } from '../types'
 export async function fingerprint(file: File): Promise<string> {
   const chunk = 1024 * 1024
@@ -13,9 +14,12 @@ let connection: Promise<IDBDatabase> | undefined
 function database(): Promise<IDBDatabase> {
   if (!connection)
     connection = new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open('kinotingla', 1)
-      request.onupgradeneeded = () =>
-        request.result.createObjectStore('sessions', { keyPath: 'fingerprint' })
+      const request = indexedDB.open('kinotingla', 2)
+      request.onupgradeneeded = (event) => {
+        if (event.oldVersion < 1)
+          request.result.createObjectStore('sessions', { keyPath: 'fingerprint' })
+        if (event.oldVersion < 2) request.result.createObjectStore('transcripts')
+      }
       request.onerror = () => {
         connection = undefined
         reject(request.error)
@@ -69,4 +73,23 @@ export async function saveSession(session: Session): Promise<void> {
     transaction.oncomplete = () => resolve()
     transaction.onerror = transaction.onabort = () => reject(transaction.error)
   })
+}
+
+async function transcriptRequest<T>(
+  mode: IDBTransactionMode,
+  run: (store: IDBObjectStore) => IDBRequest<T>,
+) {
+  const db = await database()
+  return new Promise<T>((resolve, reject) => {
+    const transaction = db.transaction('transcripts', mode)
+    const request = run(transaction.objectStore('transcripts'))
+    transaction.oncomplete = () => resolve(request.result)
+    transaction.onerror = transaction.onabort = () => reject(transaction.error)
+  })
+}
+export function loadTranscript(key: string): Promise<Corpus | undefined> {
+  return transcriptRequest('readonly', (store) => store.get(key))
+}
+export async function saveTranscript(key: string, corpus: Corpus) {
+  await transcriptRequest('readwrite', (store) => store.put(corpus, key))
 }

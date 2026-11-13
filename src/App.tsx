@@ -11,6 +11,9 @@ import { parseSubtitles, timeLabel, cleanText } from './lib/subtitles'
 import { checkAnswer } from './lib/checking'
 import { fingerprint, loadSession, saveSession } from './lib/storage'
 import { scanMedia } from './lib/media'
+import { applyTranscript, useTranscription } from './lib/use-transcription'
+import { defaultModel, whisperModels } from './lib/whisper-types'
+import type { WhisperModel } from './lib/whisper-types'
 import { MEDIA_EXTENSIONS, mediaLink, probeMedia } from './lib/media-input'
 import { useVisualViewport } from './hooks'
 import './App.css'
@@ -109,6 +112,13 @@ export default function App() {
   const [session, setSession] = useState<Session>()
   const [scan, setScan] = useState<MediaScan>()
   const [trackId, setTrackId] = useState('')
+  const webgpu = 'gpu' in navigator
+  const [model, setModel] = useState<WhisperModel>(() => defaultModel(webgpu))
+  const [includeShort, setIncludeShort] = useState(false)
+  const [aiRetry, setAiRetry] = useState(0)
+  const [waiting, setWaiting] = useState(false)
+  const [jump, setJump] = useState('')
+  const pendingJump = useRef<number | undefined>(undefined)
   const [busy, setBusy] = useState<'scan' | 'extract' | ''>('')
   const [extractionProgress, setExtractionProgress] = useState(0)
   const [notice, setNotice] = useState('')
@@ -142,6 +152,35 @@ export default function App() {
 
   const cue = session?.cues[session.index]
   const cueText = cue ? (session?.edits[cue.id] ?? cue.text) : ''
+  const auto = !session?.source || session.source === t.aiSource
+  const ai = useTranscription({
+    scan,
+    key: session?.fingerprint,
+    enabled: auto,
+    position: cue?.start ?? 0,
+    model,
+    webgpu,
+    includeShort,
+    retry: aiRetry,
+    onCues(cues, done) {
+      setSession((current) => {
+        if (!current) return current
+        const updated = applyTranscript(current, cues, t.aiSource, done)
+        if (pendingJump.current !== undefined) {
+          const index = cues.findIndex((item) => item.end >= pendingJump.current!)
+          if (index >= 0) return { ...updated, index, work: undefined, completed: false }
+        }
+        if (waiting && updated.index + 1 < cues.length)
+          return { ...updated, index: updated.index + 1, work: undefined, completed: false }
+        return updated
+      })
+    },
+  })
+  useEffect(() => {
+    if (pendingJump.current !== undefined && cue && cue.end >= pendingJump.current)
+      pendingJump.current = undefined
+    setWaiting(false)
+  }, [cue?.id])
   const stopClip = useCallback(() => {
     clearTimeout(clipTimer.current)
     clipEnd.current = undefined
@@ -216,6 +255,8 @@ export default function App() {
     currentScan.current?.dispose()
     currentScan.current = undefined
     setScan(undefined)
+    setWaiting(false)
+    pendingJump.current = undefined
     setSession(undefined)
     setAnswer('')
     setResult(undefined)
@@ -332,10 +373,11 @@ export default function App() {
     const player = video.current
     stopClip()
     typing.current.last = 0
-    const start = Math.max(0, cue.start + session!.offset - 0.2)
+    const padding = cue.model ? 0.25 : 0.2
+    const start = Math.max(0, cue.start + session!.offset - padding)
     const end = Math.min(
       Number.isFinite(player.duration) ? player.duration : Infinity,
-      cue.end + session!.offset + 0.2,
+      cue.end + session!.offset + padding,
     )
     if (end <= start) {
       setError(t.playError)
@@ -374,10 +416,11 @@ export default function App() {
     if (player && cue && session && !session.completed) {
       setPlaying(true)
       if (clipEnd.current === undefined) {
-        const start = Math.max(0, cue.start + session.offset - 0.2)
+        const padding = cue.model ? 0.25 : 0.2
+        const start = Math.max(0, cue.start + session.offset - padding)
         clipEnd.current = Math.min(
           Number.isFinite(player.duration) ? player.duration : Infinity,
-          cue.end + session.offset + 0.2,
+          cue.end + session.offset + padding,
         )
         if (player.currentTime < start || player.currentTime >= clipEnd.current)
           player.currentTime = start
@@ -387,6 +430,11 @@ export default function App() {
   }
   function advance() {
     stopClip()
+    if (auto && ai.corpus && !ai.done && session && session.index >= session.cues.length - 1) {
+      setWaiting(true)
+      if (cue) ai.prioritize(cue.end)
+      return
+    }
     clearTimeout(draftTimer.current)
     typing.current.last = 0
     setSession((current) =>
@@ -1144,10 +1192,62 @@ export default function App() {
                 <Icon name="upload" size={17} />
                 {t.uploadSubtitles}
               </button>
-              <button className="button automatic" disabled>
-                <Icon name="spark" size={16} />
-                {t.automatic}
-              </button>
+              {file && auto && scan?.audio && (
+                <div className="ai-status">
+                  <strong>{t.aiSource}</strong>
+                  {ai.corpus && (
+                    <span>
+                      {timeLabel(ai.seconds)} / {timeLabel(ai.corpus.duration)} {t.aiProgress}
+                    </span>
+                  )}
+                  {ai.busy && (
+                    <span>
+                      {ai.bytes
+                        ? t.aiLoading + ' ' + (ai.bytes / 1e6).toFixed(1) + ' MB'
+                        : t.aiPreparing}
+                    </span>
+                  )}
+                  {waiting && <span>{t.aiWaiting}</span>}
+                  {ai.done && !session?.cues.length && <span>{t.aiEmpty}</span>}
+                  {ai.failed && (
+                    <>
+                      <span>{t.aiFailed}</span>
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => setAiRetry((value) => value + 1)}
+                      >
+                        {t.aiRetry}
+                      </button>
+                    </>
+                  )}
+                  {ai.storageFailed && <span>{t.storageError}</span>}
+                  <details>
+                    <summary>{t.aiSettings}</summary>
+                    <label>
+                      {t.aiModel}
+                      <select
+                        value={model}
+                        onChange={(event) => setModel(event.target.value as WhisperModel)}
+                      >
+                        {whisperModels.map((value) => (
+                          <option key={value} value={value}>
+                            {t.aiModelNames[value]}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={includeShort}
+                        onChange={(event) => setIncludeShort(event.target.checked)}
+                      />{' '}
+                      {t.aiShort}
+                    </label>
+                  </details>
+                </div>
+              )}
               {busy && (
                 <div className="loading" role="status">
                   <i />
@@ -1338,7 +1438,7 @@ export default function App() {
             </section>
           </aside>
         </div>
-        {!!session?.cues.length && (
+        {session && (!!session.cues.length || !!(auto && ai.corpus)) && (
           <section className="panel cue-list">
             <button
               className="list-toggle"
@@ -1350,6 +1450,46 @@ export default function App() {
             </button>
             {listOpen && (
               <div className="cue-list-scroll">
+                {auto && ai.corpus && (
+                  <form
+                    className="ai-jump"
+                    onSubmit={(event) => {
+                      event.preventDefault()
+                      const seconds = Math.max(0, Math.min(Number(jump), ai.corpus!.duration - 1))
+                      const window = ai.corpus!.windows.find(
+                        (part) => part.start <= seconds && part.end > seconds,
+                      )
+                      const index = window
+                        ? (session?.cues ?? []).findIndex(
+                            (cue) => cue.start < window.end && cue.end >= seconds,
+                          )
+                        : -1
+                      if (index >= 0) {
+                        setSession(
+                          (current) =>
+                            current && { ...current, index, completed: false, work: undefined },
+                        )
+                        return
+                      }
+                      pendingJump.current = seconds
+                      setWaiting(true)
+                      ai.prioritize(seconds)
+                    }}
+                  >
+                    <label>
+                      {t.aiJumpSeconds}{' '}
+                      <input
+                        type="number"
+                        min="0"
+                        step="1"
+                        required
+                        value={jump}
+                        onChange={(event) => setJump(event.target.value)}
+                      />
+                    </label>
+                    <button className="button small">{t.aiJump}</button>
+                  </form>
+                )}
                 {session.cues.map((item, index) => (
                   <div
                     className={`cue-row ${index === session.index ? 'active' : ''}`}

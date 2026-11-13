@@ -1532,3 +1532,48 @@ footer {
 .audio-wrap audio {
   width: 100%;
 }
+
+.ai-status {
+  display: grid;
+  gap: 7px;
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-2);
+  font-size: 12px;
+}
+.ai-status span {
+  color: var(--muted);
+}
+.ai-status summary {
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.ai-status label {
+  display: block;
+  margin-top: 7px;
+}
+.ai-status select,
+.ai-jump input {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px;
+}
+.ai-status select {
+  display: block;
+  width: 100%;
+}
+.ai-jump {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+  font-size: 12px;
+}
+.ai-jump input {
+  width: 80px;
+}
