@@ -110,6 +110,7 @@ export async function scanMedia(
       audioWarning,
       audioCodec,
       audioOnly: !video,
+      localFile: file instanceof File ? file : undefined,
       input,
       audio,
       dispose,

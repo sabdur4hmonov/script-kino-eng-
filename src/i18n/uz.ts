@@ -203,4 +203,6 @@ export const uz = {
   aiJumpTime: 'Vaqt bo‘yicha o‘tish',
   aiJumpSeconds: 'Vaqt (soniya)',
   aiJump: 'O‘tish',
+  audioConverting: 'Ovoz ijro uchun tayyorlanmoqda…',
+  audioFallback: 'Ovoz qurilmangizda mos formatga o‘tkaziladi.',
 } as const

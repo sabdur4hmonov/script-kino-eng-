@@ -49,6 +49,7 @@ export type MediaScan = {
   input: import('mediabunny').Input
   audio: import('mediabunny').InputAudioTrack | null
   audioOnly: boolean
+  localFile?: File
   tracks: Track[]
   audioWarning: boolean
   audioCodec: string

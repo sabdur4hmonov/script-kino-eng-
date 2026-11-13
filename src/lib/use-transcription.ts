@@ -39,6 +39,10 @@ export function useTranscription({
   const [visible, setVisible] = useState(!document.hidden)
   const client = useRef<WhisperClient | undefined>(undefined)
   const decode = useRef<DecodeWindow | undefined>(undefined)
+  const fallback = useRef<ReturnType<typeof import('./ffmpeg-audio').fallbackAudio> | undefined>(
+    undefined,
+  )
+  const [hasFallback, setHasFallback] = useState(false)
   const contextRef = useRef<AbortController | undefined>(undefined)
   const task = useRef(false)
   const [cycle, setCycle] = useState(0)
@@ -61,6 +65,7 @@ export function useTranscription({
     setStorageFailed(false)
     prioritize(undefined)
     decode.current = undefined
+    setHasFallback(false)
     if (!scan?.audio || !enabled || !key) return
     const controller = new AbortController()
     contextRef.current = controller
@@ -79,9 +84,19 @@ export function useTranscription({
       signal.throwIfAborted()
       if (!(duration > 0) || !Number.isFinite(duration))
         throw new Error('Media duration unavailable')
-      if (!(await scan.audio!.canDecode())) throw new Error('Native audio decoding unavailable')
+      const native = await scan.audio!.canDecode().catch(() => false)
       signal.throwIfAborted()
-      decode.current = audioWindows(scan.audio!)
+      if (native) decode.current = audioWindows(scan.audio!)
+      else {
+        const { fallbackAudio, fallbackCodec } = await import('./ffmpeg-audio')
+        signal.throwIfAborted()
+        if (!scan.localFile || !fallbackCodec(scan.audioCodec))
+          throw new Error('Native audio decoding unavailable')
+        const converter = fallbackAudio(scan.localFile, signal)
+        fallback.current = converter
+        decode.current = converter.decode
+        setHasFallback(true)
+      }
       const value = restored ?? { duration, windows: [] }
       corpusRef.current = value
       setCorpus(value)
@@ -90,6 +105,8 @@ export function useTranscription({
     })
     return () => {
       controller.abort()
+      fallback.current?.dispose()
+      fallback.current = undefined
       client.current?.dispose()
       client.current = undefined
       contextRef.current = undefined
@@ -171,6 +188,8 @@ export function useTranscription({
     decode,
     client,
     contextRef,
+    fallback,
+    hasFallback,
   }
 }
 

@@ -144,6 +144,10 @@ export default function App() {
   const generation = useRef(0)
   const abort = useRef<AbortController | undefined>(undefined)
   const clipEnd = useRef<number | undefined>(undefined)
+  const fallbackPlayer = useRef<HTMLAudioElement | null>(null)
+  const audioClipUrl = useRef<string | undefined>(undefined)
+  const audioClipRun = useRef<AbortController | undefined>(undefined)
+  const [converting, setConverting] = useState(false)
   const clipTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const typing = useRef({ ms: 0, last: 0, device: initialDevice() })
   const draftTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -185,6 +189,12 @@ export default function App() {
     clearTimeout(clipTimer.current)
     clipEnd.current = undefined
     video.current?.pause()
+    audioClipRun.current?.abort()
+    fallbackPlayer.current?.pause()
+    if (audioClipUrl.current) URL.revokeObjectURL(audioClipUrl.current)
+    audioClipUrl.current = undefined
+    fallbackPlayer.current = null
+    setConverting(false)
     setPlaying(false)
   }, [])
 
@@ -384,23 +394,43 @@ export default function App() {
       return
     }
     try {
+      const converter = ai.fallback.current
+      if (converter) {
+        const controller = new AbortController()
+        audioClipRun.current = controller
+        setConverting(true)
+        const blob = await converter.clip(start, end, controller.signal)
+        if (controller.signal.aborted) return
+        audioClipUrl.current = URL.createObjectURL(blob)
+        const audio = new Audio(audioClipUrl.current)
+        fallbackPlayer.current = audio
+        audio.playbackRate = speed
+        player.muted = true
+        setConverting(false)
+      }
       clipEnd.current = end
       player.currentTime = start
       player.playbackRate = speed
       setPlaying(true)
       await player.play()
-    } catch {
-      clipEnd.current = undefined
-      setPlaying(false)
+      if (fallbackPlayer.current) await fallbackPlayer.current.play()
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+      stopClip()
       setError(t.playError)
     }
-  }, [cue, session, speed, stopClip])
+  }, [cue, session, speed, stopClip, ai.fallback])
 
   function scheduleClipEnd() {
     clearTimeout(clipTimer.current)
     const player = video.current
     if (!player || clipEnd.current === undefined || player.paused || player.seeking) return
     const remaining = clipEnd.current - player.currentTime
+    const audio = fallbackPlayer.current
+    if (audio && Number.isFinite(audio.duration)) {
+      const target = Math.max(0, audio.duration - remaining)
+      if (Math.abs(audio.currentTime - target) > 0.15) audio.currentTime = target
+    }
     if (remaining <= 0) {
       stopClip()
       return
@@ -812,6 +842,7 @@ export default function App() {
                       video.current = element
                     }}
                     crossOrigin={mediaSource instanceof URL ? 'anonymous' : undefined}
+                    muted={ai.hasFallback}
                     src={url}
                     controls
                     playsInline
@@ -828,6 +859,7 @@ export default function App() {
                     onRateChange={scheduleClipEnd}
                     onPause={() => {
                       clearTimeout(clipTimer.current)
+                      fallbackPlayer.current?.pause()
                       setPlaying(false)
                     }}
                     onTimeUpdate={scheduleClipEnd}
@@ -958,6 +990,7 @@ export default function App() {
                     <button
                       className={`button replay ${playing ? 'is-playing' : ''}`}
                       aria-label={playing ? t.clipping : t.replay}
+                      disabled={converting}
                       onClick={() => void replay()}
                     >
                       {playing ? (
@@ -971,7 +1004,9 @@ export default function App() {
                       )}
                     </button>
                     <span className="replay-info">
-                      <strong aria-hidden="true">{playing ? t.clipping : t.replay}</strong>
+                      <strong aria-hidden="true">
+                        {converting ? t.audioConverting : playing ? t.clipping : t.replay}
+                      </strong>
                       <span className="clip-time">
                         {timeLabel(cue.start + session!.offset)} —{' '}
                         {timeLabel(cue.end + session!.offset)}
@@ -1195,6 +1230,7 @@ export default function App() {
               {file && auto && scan?.audio && (
                 <div className="ai-status">
                   <strong>{t.aiSource}</strong>
+                  {ai.hasFallback && <span>{t.audioFallback}</span>}
                   {ai.corpus && (
                     <span>
                       {timeLabel(ai.seconds)} / {timeLabel(ai.corpus.duration)} {t.aiProgress}
