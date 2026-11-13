@@ -1,6 +1,6 @@
 # Kinotingla — local movie dictation trainer
 
-A fully static Vite + React + TypeScript app for IELTS listening practice, with an Uzbek interface. No account, backend, paid API, movie upload, or remote asset dependencies.
+A fully static Vite + React + TypeScript app for IELTS listening practice, with an Uzbek interface. The app processes media locally with no account, backend, paid API, or media upload. The browser downloads public model and decoder assets as needed.
 
 ## Run locally
 
@@ -12,7 +12,7 @@ npm ci
 npm run dev
 ```
 
-Open the URL Vite prints (normally `http://localhost:5173`). Choose your own MP4/MKV and English subtitles. `localhost` and HTTPS provide the secure context required for SHA-256 fingerprinting.
+Open the URL Vite prints (normally `http://localhost:5173`). Drop an MP4, MKV, WebM, MOV, MP3, M4A, WAV, or OGG file, or paste a direct HTTPS media URL. `localhost` and HTTPS provide the secure context required for SHA-256 fingerprinting.
 
 ```powershell
 npm run build
@@ -43,12 +43,12 @@ npx wrangler pages project create kinotingla --production-branch main
 npm run deploy
 ```
 
-If that project name is taken, change `name` in `wrangler.toml` and `--project-name` in the deploy script. Authentication belongs to your local Cloudflare CLI; no credentials are bundled into the site. The build includes Cloudflare `_headers` with a restrictive policy (`connect-src 'none'`) to prevent production app network uploads.
+If that project name is taken, change `name` in `wrangler.toml` and `--project-name` in the deploy script. Authentication belongs to your local Cloudflare CLI; no credentials are bundled into the site. The build includes Cloudflare `_headers` for WASM and HTTPS media access. Whisper weights and ONNX Runtime are fetched on demand. The matching runtime binaries and FFmpeg core are served from jsDelivr so no deployed asset exceeds the Pages 25 MiB limit.
 
 ## Practice
 
-- Pick a local video. Playback uses `URL.createObjectURL(file)`; changing files revokes the old URL. The video itself is never stored in IndexedDB.
-- Import `.srt`/`.vtt` or select an embedded text subtitle track. English tracks are preferred. The automatic transcription button is deliberately disabled.
+- Pick a local video or audio file. Playback uses `URL.createObjectURL(file)`. Direct links need CORS, byte ranges, and an exposed `Content-Range` header. Platform share pages must be opened separately to obtain a local file.
+- Whisper starts automatically. To start sooner, select an embedded English text track or import `.srt`/`.vtt`. When both sources are available, the app shows disagreements and lets you choose.
 - Shift the whole subtitle timeline by −0.5, −0.1, +0.1 or +0.5 seconds. A positive offset plays the cue later.
 - **Ctrl + Space** replays the current cue with 0.2 seconds of padding. **Enter** checks, then advances. **Shift + Enter** allows a line break. Playback speed can be 0.75× or 1×.
 - Answers stay hidden during a replay. Checking shows a word-level LCS comparison: green matches, red extra/wrong typed words, grey missing expected words. A substitution displays both the wrong word and the missing word.
@@ -72,7 +72,7 @@ The MKV parser skips media blocks and reads only text blocks, with bounded 256 K
 
 ASS/SSA styles and HTML-like tags are removed; subtitle content is rendered as React text, never executable HTML. Image subtitles (PGS/VobSub), encrypted/compressed subtitle tracks, laced subtitle blocks, fragmented MP4 subtitle streams, and complex MP4 edit lists are unsupported; upload an external SRT/VTT for these. MKV cues without a block/default duration use a 4-second fallback. WebVTT positioning/styling is intentionally ignored. Extraction is cancellable and limited to 200,000 text cues.
 
-**Container/codec support is still browser-dependent.** A browser may reject MKV, HEVC video, AC3/DTS audio, or another codec even if subtitles can be extracted. Audio inspection uses native playback capability checks and displays an Uzbek warning; actual player errors also display a clear Uzbek message. There is no automatic transcoder. For broad compatibility, convert a copy locally to **MP4, H.264 video and AAC audio**. Burned-in subtitles cannot be hidden by a web app.
+**Container/codec support is still browser-dependent.** A browser may reject MKV, HEVC video, AC3/DTS audio, or another codec even if subtitles can be extracted. Audio inspection uses native playback capability checks and displays an Uzbek warning; actual player errors also display a clear Uzbek message. For local AC3, E-AC3 and DTS files, the app can load FFmpeg WASM and transcode short audio windows. Video playback still depends on browser support. Remote sources with unsupported codecs must be saved locally first. For broad compatibility, convert a copy locally to **MP4, H.264 video and AAC audio**. Burned-in subtitles cannot be hidden by a web app.
 
 ## Local storage and privacy
 
@@ -80,7 +80,7 @@ IndexedDB stores subtitles, text edits, offset, current cue, draft/checked answe
 
 Drafts save after a short 300 ms typing pause and on blur; other changes save immediately. Wait for the saved indicator before closing. Storage errors are visible and practice remains usable. Storage is scoped to this browser and origin; moving from localhost to a deployed domain starts a separate local history. Private browsing, cleared website data, browser eviction, or a full disk can remove/prevent saves. This edge fingerprint intentionally does not hash the middle of a multi-GB movie, so files with identical size and edges share a session.
 
-There are no analytics, fetches, uploads, external fonts, or CDN scripts. Speech synthesis uses the platform's available voices; a platform may use a network voice. All interface copy is in `src/i18n/uz.ts`.
+The app sends no video, audio, text or transcripts to an inference server. HTTPS media links are read from their origin. Model files and decoder assets come from Hugging Face and jsDelivr. Speech synthesis uses the browser’s available voices. All interface copy is in `src/i18n/uz.ts`.
 
 ## Tests and test media
 
@@ -97,3 +97,18 @@ npm run test:e2e
 Unit/integration tests cover SRT/VTT sanitization, LCS/normalization, bounded reads from a simulated 2 GB source, cancellation, fingerprints, IndexedDB restore, and actual generated MKV SRT/ASS/AC3 and MP4 timed-text extraction. Browser tests run desktop and Pixel-sized layouts using installed Microsoft Edge, covering local file selection, clip end timing, hotkeys, checking, edits, sync, resume, embedded English preference, phone stat separation, overflow and absence of external requests. For another browser, change `channel` in `playwright.config.ts` (or install Playwright Chromium).
 
 Real 1–2 GB movies and a physical Android/iOS keyboard still merit a device check; simulated browser tests cannot prove every container/OS combination. Generated videos, screenshots, browser traces and build output stay ignored.
+
+## Automatic transcription and evaluation
+
+The app defaults to the English Base model when WebGPU is available and Tiny with WASM otherwise. You can choose Tiny, Base, or Small from the subtitle settings. Downloads are cached where the browser permits. Clearing site data can cause a new download. Each inference reads up to roughly 30 seconds of mono audio and saves its results in IndexedDB. The scheduler aims for about five minutes ahead of the active cue. It stops scheduling new work while hidden and lets an active window finish so it can be saved. Use the cue list to prioritize a different time.
+
+Confidence comes from model token probabilities where the runtime exposes usable logits. Scores are estimates. Silence, repeated output, common hallucinations and short replies are filtered heuristically. Words without confidence data are not assigned a fabricated probability. The model is English-only and may still transcribe non-English audio inaccurately.
+
+For developer evaluation, install Node.js 24 plus native `ffmpeg` and `ffprobe` on PATH. Add `test-media/eval/clip.wav` and a matching `test-media/eval/clip.srt`. Each media file needs a reference with the same base name. The evaluator uses bounded native FFmpeg decoding and the same Transformers.js model and sentence filter on the CPU.
+
+```powershell
+npm run eval:whisper
+npm run eval:whisper -- tiny
+```
+
+The first command runs all three models. Use model names as arguments to select a subset. It prints word error rate (substitutions, insertions and deletions divided by reference word count) per file, aggregate WER per model, and wall-clock seconds per audio minute including model initialization. Keep evaluation clips and subtitles in the Git-ignored directory.

@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "eval:whisper": "node scripts/eval-whisper.mjs",
     "test:fixtures": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-fixtures.ps1",
     "deploy": "wrangler pages deploy dist --project-name kinotingla"
   },
